@@ -11,7 +11,7 @@
 | Nome | PixFlow |
 | Pasta | `C:\Users\user\Downloads\pixflow` |
 | Stack | Next.js 14 (App Router, TS) · Tailwind · Prisma 6 · NextAuth v4 |
-| Banco | Supabase — **PROJECT ID PENDENTE** (criar; é DECISÃO/custo do Adriano) |
+| Banco | Supabase org **livepix1** · ref **cnhbynfsksfcngvfdxba** · região us-west-2 · plano Free. Tabelas criadas (prisma db push). Conexão via pooler `aws-1-us-west-2.pooler.supabase.com` (6543 app / 5432 migrations). Segredos só no `.env.local`. |
 | Vercel | PENDENTE |
 | GitHub | `adrianrosa1/pixflow` |
 | Domínio | TBD |
