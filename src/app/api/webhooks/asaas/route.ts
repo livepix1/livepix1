@@ -1,7 +1,105 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { postEntry } from "@/lib/ledger";
+import { postEntry, postEntries } from "@/lib/ledger";
 import { toNumber } from "@/lib/serialize";
+import { computePlatformFee } from "@/lib/fee";
+import { broadcastToWidget } from "@/lib/realtime";
+
+/** Palavrões básicos PT-BR — mensagem flagrada não vai pro TTS/tela. */
+const BANNED_WORDS =
+  /\b(porra|caralho|puta|merda|foder|fodase|foda-se|buceta|cu|viado|arrombado|desgra[çc]a)\b/i;
+
+/** Processa doação paga: status + ledger (bruto - taxa) + meta + alerta + broadcast. */
+async function handleDonationPaid(donationId: string, providerId?: string | null) {
+  const donation = await prisma.donation.findUnique({ where: { id: donationId } });
+  if (!donation || donation.status === "PAID") return;
+
+  const amount = toNumber(donation.amount);
+  const { fee, net } = computePlatformFee(amount, donation.method === "CARD" ? "CARD" : "PIX");
+  const flagged = donation.message ? BANNED_WORDS.test(donation.message) : false;
+
+  const updated = await prisma.donation.update({
+    where: { id: donation.id },
+    data: {
+      status: "PAID",
+      paidAt: new Date(),
+      providerId: donation.providerId ?? providerId ?? null,
+      moderationStatus: flagged ? "FLAGGED" : "AUTO_OK",
+    },
+  });
+
+  // Ledger: crédito bruto + débito da taxa, atomicamente e idempotente.
+  await postEntries(donation.creatorId, [
+    {
+      type: "DONATION_IN",
+      amount,
+      refType: "Donation",
+      refId: donation.id,
+      providerEventId: `donation-paid:${donation.id}`,
+      description: `Doação de ${donation.payerName}`,
+    },
+    {
+      type: "FEE",
+      amount: -fee,
+      refType: "Donation",
+      refId: donation.id,
+      providerEventId: `donation-fee:${donation.id}`,
+      description: `Taxa da plataforma (${donation.method === "CARD" ? "cartão" : "PIX"})`,
+    },
+  ]);
+
+  // Meta e campanha (best-effort, não bloqueia).
+  if (donation.goalId) {
+    await prisma.goal
+      .update({
+        where: { id: donation.goalId },
+        data: { currentAmount: { increment: donation.amount } },
+      })
+      .catch(() => {});
+  }
+  if (donation.campaignId) {
+    await prisma.campaign
+      .update({
+        where: { id: donation.campaignId },
+        data: { raisedAmount: { increment: donation.amount } },
+      })
+      .catch(() => {});
+  }
+
+  // Fila de alerta (fonte de verdade) + broadcast (empurrão, best-effort).
+  const existing = await prisma.alertEvent.findFirst({
+    where: { donationId: donation.id },
+    select: { id: true },
+  });
+  if (!existing) {
+    const alertPayload = {
+      payerName: updated.payerName,
+      amount: net,
+      grossAmount: amount,
+      message: flagged ? null : updated.message,
+      flagged,
+    };
+    const event = await prisma.alertEvent.create({
+      data: {
+        creatorId: donation.creatorId,
+        donationId: donation.id,
+        type: "DONATION",
+        payload: alertPayload,
+      },
+    });
+    const profile = await prisma.creatorProfile.findUnique({
+      where: { userId: donation.creatorId },
+      select: { widgetToken: true },
+    });
+    if (profile) {
+      await broadcastToWidget(profile.widgetToken, {
+        type: "alert",
+        eventId: event.id,
+        ...alertPayload,
+      });
+    }
+  }
+}
 
 /**
  * Recebe webhooks do Asaas e atualiza o status de cobranças/saques.
@@ -45,6 +143,22 @@ export async function POST(req: Request) {
             payload.event === "PAYMENT_REFUNDED"
           ? "FAILED"
           : null;
+
+      // Doações do modo criador usam externalReference "donation:{id}".
+      if (externalReference?.startsWith("donation:")) {
+        const donationId = externalReference.slice("donation:".length);
+        if (newStatus === "PAID") {
+          await handleDonationPaid(donationId, id);
+        } else if (newStatus === "FAILED") {
+          await prisma.donation
+            .updateMany({
+              where: { id: donationId, status: "PENDING" },
+              data: { status: "EXPIRED" },
+            })
+            .catch(() => {});
+        }
+        return NextResponse.json({ received: true });
+      }
 
       if (newStatus) {
         const charge = externalReference

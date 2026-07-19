@@ -51,6 +51,15 @@ export const withdrawalSchema = z
   );
 export type WithdrawalInput = z.infer<typeof withdrawalSchema>;
 
+/** Usernames proibidos — colidiriam com rotas do app. */
+export const RESERVED_USERNAMES = new Set([
+  "login", "signup", "logout", "dashboard", "api", "pay", "widget", "admin",
+  "meu-link", "cobrancas", "saques", "perfil", "extrato", "metas", "alertas",
+  "assinaturas", "moderacao", "configuracoes", "verificacao", "analytics",
+  "c", "campanhas", "app", "www", "suporte", "ajuda", "termos", "privacidade",
+  "sobre", "precos", "taxas", "blog", "docs", "static", "_next", "favicon.ico",
+]);
+
 export const profileSchema = z.object({
   name: z.string().min(2).max(80),
   username: z
@@ -58,6 +67,7 @@ export const profileSchema = z.object({
     .min(3, "Mínimo de 3 caracteres")
     .max(30)
     .regex(/^[a-z0-9_.-]+$/, "Use só letras minúsculas, números, . _ -")
+    .refine((u) => !RESERVED_USERNAMES.has(u), "Esse nome de usuário não está disponível")
     .optional()
     .or(z.literal("")),
   cpf: z
@@ -70,6 +80,27 @@ export const profileSchema = z.object({
   avatar: z.string().url("URL inválida").optional().or(z.literal("")),
 });
 export type ProfileInput = z.infer<typeof profileSchema>;
+
+// Perfil público do criador (página /[username]).
+export const creatorProfileSchema = z.object({
+  displayName: z.string().min(2, "Nome muito curto").max(60),
+  bio: z.string().max(300, "Máximo de 300 caracteres").optional().or(z.literal("")),
+  bannerUrl: z.string().url("URL inválida").optional().or(z.literal("")),
+  minDonation: z.coerce.number().min(1, "Mínimo de R$ 1,00").max(1000),
+  maxMessageLen: z.coerce.number().int().min(50).max(400),
+  isPublic: z.coerce.boolean(),
+});
+export type CreatorProfileInput = z.infer<typeof creatorProfileSchema>;
+
+// Doação na página pública do criador.
+export const donationSchema = z.object({
+  payerName: z.string().max(60).optional().or(z.literal("")),
+  payerEmail: z.string().email("Email inválido").optional().or(z.literal("")),
+  message: z.string().max(400).optional().or(z.literal("")),
+  amount: z.coerce.number().positive("Valor inválido").max(50000),
+  goalId: z.string().optional(),
+});
+export type DonationInput = z.infer<typeof donationSchema>;
 
 // Dados do pagador na página pública de pagamento.
 export const payerSchema = z.object({
