@@ -15,7 +15,7 @@ export default async function WidgetQrPage({
   if (!profile?.user.username) notFound();
 
   const base = process.env.NEXTAUTH_URL || "";
-  const url = `${base}/${profile.user.username}`;
+  const url = `${base}/c/${profile.user.username}`;
 
-  return <QrClient url={url} label={`Apoie: /${profile.user.username}`} />;
+  return <QrClient url={url} label={`Apoie: /c/${profile.user.username}`} />;
 }

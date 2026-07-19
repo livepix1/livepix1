@@ -10,9 +10,11 @@ const ITEMS = [
   { label: "Dashboard", href: "/dashboard" },
   { label: "Minha Página", href: "/configuracoes/pagina" },
   { label: "Alertas", href: "/alertas" },
+  { label: "Metas", href: "/metas" },
   { label: "Moderação", href: "/moderacao" },
   { label: "Meu Link", href: "/meu-link" },
   { label: "Cobranças", href: "/cobrancas" },
+  { label: "Extrato", href: "/extrato" },
   { label: "Saques", href: "/saques" },
   { label: "Perfil", href: "/perfil" },
 ];

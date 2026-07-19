@@ -12,7 +12,7 @@ export default async function ConfiguracoesPaginaPage() {
   });
 
   const base = process.env.NEXTAUTH_URL || "";
-  const publicUrl = user.username && profile ? `${base}/${user.username}` : null;
+  const publicUrl = user.username && profile ? `${base}/c/${user.username}` : null;
 
   const initial = profile
     ? {

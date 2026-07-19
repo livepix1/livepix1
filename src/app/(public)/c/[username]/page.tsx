@@ -5,6 +5,7 @@ import { toNumber, formatBRL } from "@/lib/serialize";
 import { Logo } from "@/components/Logo";
 import { Card } from "@/components/ui/Card";
 import { DonateForm } from "./donate-form";
+import { GoalsLive } from "./goals-live";
 
 export default async function CreatorPage({
   params,
@@ -84,30 +85,15 @@ export default async function CreatorPage({
             {goals.length > 0 && (
               <Card>
                 <p className="mb-4 font-medium text-pixflow-slate">Metas</p>
-                <div className="grid gap-4">
-                  {goals.map((g) => {
-                    const current = toNumber(g.currentAmount);
-                    const target = toNumber(g.targetAmount);
-                    const pct = Math.min(100, Math.round((current / target) * 100));
-                    return (
-                      <div key={g.id}>
-                        <div className="mb-1 flex justify-between text-sm">
-                          <span className="text-pixflow-slate">{g.title}</span>
-                          <span className="text-white/50">
-                            {formatBRL(current)} / {formatBRL(target)}
-                          </span>
-                        </div>
-                        <div className="h-2.5 overflow-hidden rounded-full bg-white/10">
-                          <div
-                            className="h-full rounded-full bg-gradient-to-r from-pixflow-cyan to-pixflow-magenta transition-all"
-                            style={{ width: `${pct}%` }}
-                          />
-                        </div>
-                        <p className="mt-0.5 text-right text-xs text-pixflow-cyan">{pct}%</p>
-                      </div>
-                    );
-                  })}
-                </div>
+                <GoalsLive
+                  username={params.username}
+                  initial={goals.map((g) => ({
+                    id: g.id,
+                    title: g.title,
+                    targetAmount: toNumber(g.targetAmount),
+                    currentAmount: toNumber(g.currentAmount),
+                  }))}
+                />
               </Card>
             )}
 
