@@ -67,11 +67,19 @@ async function handleDonationPaid(donationId: string, providerId?: string | null
   }
 
   // Fila de alerta (fonte de verdade) + broadcast (empurrão, best-effort).
+  // Doações abaixo do mínimo configurado pelo criador não geram alerta na tela
+  // (mas o dinheiro/ledger acima já foi processado normalmente).
+  const alertConfig = await prisma.alertConfig.findUnique({
+    where: { creatorId: donation.creatorId },
+    select: { minAlertAmount: true },
+  });
+  const belowAlertMin = amount < toNumber(alertConfig?.minAlertAmount ?? 0);
+
   const existing = await prisma.alertEvent.findFirst({
     where: { donationId: donation.id },
     select: { id: true },
   });
-  if (!existing) {
+  if (!existing && !belowAlertMin) {
     const alertPayload = {
       payerName: updated.payerName,
       amount: net,

@@ -1,0 +1,74 @@
+"use client";
+
+import { useState } from "react";
+import { reviewDonation } from "@/lib/actions/moderation";
+import { formatBRL } from "@/lib/serialize";
+
+export interface FlaggedDonation {
+  id: string;
+  payerName: string;
+  amount: number;
+  message: string;
+  createdAt: string;
+}
+
+export function ModerationList({ items }: { items: FlaggedDonation[] }) {
+  const [hidden, setHidden] = useState<Set<string>>(new Set());
+  const [loading, setLoading] = useState<string | null>(null);
+
+  async function decide(id: string, decision: "AUTO_OK" | "BLOCKED") {
+    setLoading(id);
+    await reviewDonation(id, decision);
+    setLoading(null);
+    setHidden((prev) => new Set(prev).add(id));
+  }
+
+  const visible = items.filter((i) => !hidden.has(i.id));
+
+  if (visible.length === 0) {
+    return (
+      <p className="py-10 text-center text-sm text-white/40">
+        Nada pendente de revisão. 👍
+      </p>
+    );
+  }
+
+  return (
+    <div className="grid gap-3">
+      {visible.map((d) => (
+        <div
+          key={d.id}
+          className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4"
+        >
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-pixflow-slate">
+              {d.payerName} · {formatBRL(d.amount)}
+            </span>
+            <span className="text-xs text-white/40">
+              {new Date(d.createdAt).toLocaleString("pt-BR")}
+            </span>
+          </div>
+          <p className="mt-2 text-sm text-white/70">{d.message}</p>
+          <div className="mt-3 flex gap-2">
+            <button
+              type="button"
+              onClick={() => decide(d.id, "AUTO_OK")}
+              disabled={loading === d.id}
+              className="rounded-lg border border-emerald-500/40 px-3 py-1.5 text-xs text-emerald-400 hover:bg-emerald-500/10"
+            >
+              ✓ Aprovar
+            </button>
+            <button
+              type="button"
+              onClick={() => decide(d.id, "BLOCKED")}
+              disabled={loading === d.id}
+              className="rounded-lg border border-pixflow-magenta/40 px-3 py-1.5 text-xs text-pixflow-magenta hover:bg-pixflow-magenta/10"
+            >
+              ✕ Bloquear
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
