@@ -1,8 +1,10 @@
-// PixFlow — Prisma schema
+// PixLive — Prisma schema
 // Sessão de auth = JWT (ver src/lib/auth.ts). A tabela Session fica intencionalmente
 // vazia: existe só porque o PrismaAdapter a referencia. NÃO "consertar" isso.
-// username vive no User (não no PaymentLink) — a rota /pay/[username]/[linkId]
-// resolve User por username e depois PaymentLink por id + ownership.
+// username vive no User (não no PaymentLink) — rotas públicas resolvem User por username.
+// PaymentLink/Charge = modo autônomo (links de cobrança), INTOCADOS.
+// Novos modelos (F0): perfil de criador, doações com alertas, metas, campanhas,
+// assinaturas, carteira com ledger APPEND-ONLY (LedgerEntry nunca sofre UPDATE/DELETE).
 
 generator client {
   provider = "prisma-client-js"
@@ -23,15 +25,28 @@ model User {
   avatar       String?
   cpf          String?
   accountType  String   @default("PF") // PF ou CNPJ
-  pixKey       String?
+  profileType  String   @default("CREATOR") // CREATOR, SUPPORTER, SELLER
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  paymentLinks PaymentLink[]
-  charges      Charge[]
-  withdrawals  Withdrawal[]
-  accounts     Account[]
-  sessions     Session[]
+  pixKey String?
+
+  paymentLinks     PaymentLink[]
+  charges          Charge[]
+  withdrawals      Withdrawal[]
+  accounts         Account[]
+  sessions         Session[]
+  creatorProfile   CreatorProfile?
+  donations        Donation[]
+  alertConfig      AlertConfig?
+  alertEvents      AlertEvent[]
+  goals            Goal[]
+  campaigns        Campaign[]
+  plans            CreatorPlan[]
+  wallet           Wallet?
+  providerAccount  ProviderAccount?
+  apiKeys          ApiKey[]
+  webhookEndpoints WebhookEndpoint[]
 }
 
 model Account {
@@ -60,6 +75,8 @@ model Session {
   expires      DateTime
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
+
+// ============ MODO AUTÔNOMO (links de cobrança — intocado) ============
 
 model PaymentLink {
   id          String   @id @default(cuid())
@@ -114,6 +131,229 @@ model Withdrawal {
   asaasTransferId    String?
   createdAt          DateTime  @default(now())
   completedAt        DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// ============ MODO CRIADOR (paridade Livepix) ============
+
+model CreatorProfile {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  displayName   String
+  bio           String?
+  bannerUrl     String?
+  socialLinks   Json?
+  minDonation   Decimal  @default(1)
+  maxMessageLen Int      @default(200)
+  widgetToken   String   @unique
+  isPublic      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Donation {
+  id               String    @id @default(cuid())
+  creatorId        String // User.id do criador que recebe
+  payerName        String    @default("Anônimo")
+  payerEmail       String?
+  message          String?
+  amount           Decimal
+  method           String    @default("PIX") // PIX, CARD
+  status           String    @default("PENDING") // PENDING, PAID, REFUSED, EXPIRED
+  provider         String    @default("ASAAS")
+  providerId       String?   @unique // id da cobrança no provider (idempotência)
+  receiptUrl       String? // comprovante — diferencial anti-"PIX sumiu"
+  moderationStatus String    @default("AUTO_OK") // AUTO_OK, FLAGGED, BLOCKED
+  goalId           String?
+  campaignId       String?
+  createdAt        DateTime  @default(now())
+  paidAt           DateTime?
+
+  creator  User      @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  goal     Goal?     @relation(fields: [goalId], references: [id], onDelete: SetNull)
+  campaign Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+
+  @@index([creatorId, status])
+  @@index([creatorId, createdAt])
+}
+
+model AlertConfig {
+  id             String   @id @default(cuid())
+  creatorId      String   @unique
+  soundUrl       String?
+  gifUrl         String?
+  durationMs     Int      @default(8000)
+  ttsEnabled     Boolean  @default(true)
+  ttsVoice       String?
+  ttsMinAmount   Decimal  @default(0)
+  minAlertAmount Decimal  @default(0)
+  paused         Boolean  @default(false) // fila pausada pelo criador
+  theme          Json?
+  updatedAt      DateTime @updatedAt
+
+  creator User @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+}
+
+// Fila persistente de alertas do widget — fonte de verdade (Realtime é só o empurrão).
+model AlertEvent {
+  id          String    @id @default(cuid())
+  creatorId   String
+  donationId  String?
+  type        String    @default("DONATION") // DONATION, SUB, TEST
+  payload     Json // { payerName, amount, message, ... } congelado no momento do evento
+  createdAt   DateTime  @default(now())
+  displayedAt DateTime?
+  skippedAt   DateTime?
+
+  creator User @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+
+  @@index([creatorId, displayedAt])
+}
+
+model Goal {
+  id            String    @id @default(cuid())
+  creatorId     String
+  title         String
+  targetAmount  Decimal
+  currentAmount Decimal   @default(0) // cache derivado das doações PAID
+  startsAt      DateTime  @default(now())
+  endsAt        DateTime?
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+
+  creator   User       @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  donations Donation[]
+
+  @@index([creatorId, isActive])
+}
+
+model Campaign {
+  id           String    @id @default(cuid())
+  creatorId    String
+  slug         String
+  title        String
+  description  String?
+  targetAmount Decimal?
+  raisedAmount Decimal   @default(0)
+  endsAt       DateTime?
+  status       String    @default("ACTIVE") // ACTIVE, ENDED, CANCELED
+  createdAt    DateTime  @default(now())
+
+  creator   User       @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  donations Donation[]
+
+  @@unique([creatorId, slug])
+}
+
+// Plano de assinatura criado pelo criador (membership).
+model CreatorPlan {
+  id              String   @id @default(cuid())
+  creatorId       String
+  name            String
+  description     String?
+  price           Decimal
+  interval        String   @default("MONTHLY")
+  rewards         Json? // lista de benefícios exibidos
+  discordRoleId   String?
+  telegramGroupId String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+
+  creator       User           @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  subscriptions Subscription[]
+
+  @@index([creatorId])
+}
+
+model Subscription {
+  id               String    @id @default(cuid())
+  planId           String
+  subscriberName   String    @default("Apoiador")
+  subscriberEmail  String
+  status           String    @default("PENDING") // PENDING, ACTIVE, PAST_DUE, CANCELED
+  provider         String    @default("ASAAS")
+  providerSubId    String?   @unique
+  cancelToken      String    @unique @default(cuid()) // link mágico de cancelamento
+  currentPeriodEnd DateTime?
+  createdAt        DateTime  @default(now())
+
+  plan CreatorPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@index([planId, status])
+}
+
+// ============ DINHEIRO (ledger append-only) ============
+
+model Wallet {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  balance   Decimal  @default(0) // cache derivado do ledger (única coluna mutável)
+  updatedAt DateTime @updatedAt
+
+  user    User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  entries LedgerEntry[]
+}
+
+// APPEND-ONLY: nunca UPDATE/DELETE. Idempotência por providerEventId unique.
+model LedgerEntry {
+  id              String   @id @default(cuid())
+  walletId        String
+  type            String // DONATION_IN, CHARGE_IN, SUB_IN, FEE, PAYOUT, ADJUSTMENT
+  amount          Decimal // com sinal: crédito positivo, débito negativo
+  refType         String? // Donation, Charge, Subscription, Withdrawal...
+  refId           String?
+  providerEventId String?  @unique
+  description     String?
+  createdAt       DateTime @default(now())
+
+  wallet Wallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  @@index([walletId, createdAt])
+}
+
+// Subconta do criador no provider (Asaas marketplace) + estado de KYC.
+model ProviderAccount {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  provider     String   @default("ASAAS")
+  subAccountId String?
+  kycStatus    String   @default("NONE") // NONE, PENDING, APPROVED, REJECTED
+  apiKeyEnc    String? // apiKey da subconta cifrada (AES-GCM) — nunca em claro
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ============ API PÚBLICA (F8 — tabelas criadas agora, baratas) ============
+
+model ApiKey {
+  id         String    @id @default(cuid())
+  userId     String
+  name       String
+  keyHash    String    @unique
+  scopes     String    @default("read") // csv: read,write,alerts
+  lastUsedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model WebhookEndpoint {
+  id        String   @id @default(cuid())
+  userId    String
+  url       String
+  secret    String
+  events    String   @default("payment.new") // csv de eventos assinados
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { postEntry } from "@/lib/ledger";
+import { toNumber } from "@/lib/serialize";
 
 /**
  * Recebe webhooks do Asaas e atualiza o status de cobranças/saques.
@@ -60,6 +62,19 @@ export async function POST(req: Request) {
               asaasChargeId: charge.asaasChargeId ?? id ?? null,
             },
           });
+
+          // Ledger: crédito idempotente quando pago (modo autônomo).
+          if (newStatus === "PAID") {
+            await postEntry({
+              userId: charge.userId,
+              type: "CHARGE_IN",
+              amount: toNumber(charge.amount),
+              refType: "Charge",
+              refId: charge.id,
+              providerEventId: `charge-paid:${charge.id}`,
+              description: `Cobrança paga por ${charge.payerName}`,
+            });
+          }
         }
       }
     }
@@ -84,6 +99,19 @@ export async function POST(req: Request) {
               completedAt: newStatus === "COMPLETED" ? new Date() : w.completedAt,
             },
           });
+
+          // Ledger: saque falhou → devolve o valor reservado (idempotente).
+          if (newStatus === "FAILED") {
+            await postEntry({
+              userId: w.userId,
+              type: "ADJUSTMENT",
+              amount: toNumber(w.amount),
+              refType: "Withdrawal",
+              refId: w.id,
+              providerEventId: `withdrawal-refund:${w.id}`,
+              description: "Estorno de saque falho",
+            });
+          }
         }
       }
     }

@@ -11,6 +11,7 @@ import {
   profileSchema,
 } from "@/lib/validators";
 import { computeWithdrawalFee, getBalance } from "@/lib/finance";
+import { postEntry } from "@/lib/ledger";
 
 export type ActionResult =
   | { ok: true; message?: string }
@@ -94,7 +95,7 @@ export async function requestWithdrawal(input: unknown): Promise<ActionResult> {
 
   const { fee, net } = computeWithdrawalFee(amount);
 
-  await prisma.withdrawal.create({
+  const withdrawal = await prisma.withdrawal.create({
     data: {
       userId,
       amount: new Prisma.Decimal(amount),
@@ -107,6 +108,17 @@ export async function requestWithdrawal(input: unknown): Promise<ActionResult> {
       destinationAccount: parsed.data.destinationAccount?.trim() || null,
       status: "PENDING",
     },
+  });
+
+  // Ledger: reserva o valor (débito) — idempotente por withdrawal.id.
+  await postEntry({
+    userId,
+    type: "PAYOUT",
+    amount: -amount,
+    refType: "Withdrawal",
+    refId: withdrawal.id,
+    providerEventId: `withdrawal:${withdrawal.id}`,
+    description: "Saque solicitado",
   });
 
   revalidatePath("/saques");
