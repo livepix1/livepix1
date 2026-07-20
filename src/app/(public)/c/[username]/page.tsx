@@ -6,6 +6,7 @@ import { Logo } from "@/components/Logo";
 import { Card } from "@/components/ui/Card";
 import { DonateForm } from "./donate-form";
 import { GoalsLive } from "./goals-live";
+import { PlansSection, type PublicPlan } from "./plans-section";
 
 export default async function CreatorPage({
   params,
@@ -20,7 +21,7 @@ export default async function CreatorPage({
   const profile = user.creatorProfile;
 
   const thirtyDaysAgo = new Date(Date.now() - 30 * 864e5);
-  const [goals, topDonors] = await Promise.all([
+  const [goals, topDonors, plans] = await Promise.all([
     prisma.goal.findMany({
       where: { creatorId: user.id, isActive: true },
       orderBy: { createdAt: "desc" },
@@ -33,7 +34,19 @@ export default async function CreatorPage({
       orderBy: { _sum: { amount: "desc" } },
       take: 5,
     }),
+    prisma.creatorPlan.findMany({
+      where: { creatorId: user.id, isActive: true },
+      orderBy: { price: "asc" },
+    }),
   ]);
+
+  const publicPlans: PublicPlan[] = plans.map((p) => ({
+    id: p.id,
+    name: p.name,
+    description: p.description,
+    price: toNumber(p.price),
+    rewards: Array.isArray(p.rewards) ? (p.rewards as string[]) : [],
+  }));
 
   return (
     <main className="relative min-h-screen overflow-hidden">
@@ -124,6 +137,13 @@ export default async function CreatorPage({
                 </ol>
               )}
             </Card>
+
+            {publicPlans.length > 0 && (
+              <Card>
+                <p className="mb-4 font-medium text-pixflow-slate">Assinaturas</p>
+                <PlansSection plans={publicPlans} />
+              </Card>
+            )}
           </div>
 
           {/* Coluna direita: form de doação */}

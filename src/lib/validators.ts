@@ -55,7 +55,7 @@ export type WithdrawalInput = z.infer<typeof withdrawalSchema>;
 export const RESERVED_USERNAMES = new Set([
   "login", "signup", "logout", "dashboard", "api", "pay", "widget", "admin",
   "meu-link", "cobrancas", "saques", "perfil", "extrato", "metas", "alertas",
-  "assinaturas", "moderacao", "configuracoes", "verificacao", "analytics",
+  "assinaturas", "assinatura", "moderacao", "configuracoes", "verificacao", "analytics",
   "c", "campanhas", "app", "www", "suporte", "ajuda", "termos", "privacidade",
   "sobre", "precos", "taxas", "blog", "docs", "static", "_next", "favicon.ico",
 ]);

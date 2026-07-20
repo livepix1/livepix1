@@ -97,27 +97,41 @@ export const asaasProvider: PaymentProvider = {
   },
 
   async createSubscription(input): Promise<SubscriptionResult> {
-    const customer = await createCustomer({
-      name: input.customerName,
-      email: input.customerEmail,
-    });
-    const sub = await asaasFetch<{ id: string; invoiceUrl?: string }>("/subscriptions", {
-      method: "POST",
-      body: {
-        customer: customer.id,
-        billingType: "PIX",
-        value: input.value,
-        nextDueDate: new Date().toISOString().slice(0, 10),
-        cycle: input.cycle,
-        description: input.description,
-        externalReference: input.externalReference,
-      },
-    });
-    return { providerSubId: sub.id, paymentUrl: sub.invoiceUrl };
+    try {
+      const customer = await createCustomer({
+        name: input.customerName,
+        email: input.customerEmail,
+      });
+      const sub = await asaasFetch<{ id: string; invoiceUrl?: string }>("/subscriptions", {
+        method: "POST",
+        body: {
+          customer: customer.id,
+          billingType: "PIX",
+          value: input.value,
+          nextDueDate: new Date().toISOString().slice(0, 10),
+          cycle: input.cycle,
+          description: input.description,
+          externalReference: input.externalReference,
+        },
+      });
+      return { providerSubId: sub.id, paymentUrl: sub.invoiceUrl };
+    } catch (err) {
+      if (err instanceof AsaasNotConfiguredError) {
+        throw new ProviderNotConfiguredError("ASAAS");
+      }
+      throw err;
+    }
   },
 
   async cancelSubscription(providerSubId): Promise<void> {
-    await asaasFetch(`/subscriptions/${providerSubId}`, { method: "DELETE" });
+    try {
+      await asaasFetch(`/subscriptions/${providerSubId}`, { method: "DELETE" });
+    } catch (err) {
+      if (err instanceof AsaasNotConfiguredError) {
+        throw new ProviderNotConfiguredError("ASAAS");
+      }
+      throw err;
+    }
   },
 
   async createTransfer(input): Promise<TransferResult> {

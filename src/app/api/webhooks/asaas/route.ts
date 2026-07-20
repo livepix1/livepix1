@@ -110,6 +110,66 @@ async function handleDonationPaid(donationId: string, providerId?: string | null
 }
 
 /**
+ * Processa um pagamento de assinatura (recorrente — chamado a cada ciclo).
+ * Idempotente por paymentId (cada mês gera um payment.id novo no Asaas).
+ */
+async function handleSubscriptionPaid(
+  ourSubId: string,
+  paymentId: string | undefined,
+  amount: number
+) {
+  const sub = await prisma.subscription.findUnique({
+    where: { id: ourSubId },
+    include: { plan: true },
+  });
+  if (!sub) return;
+
+  const periodEnd = new Date();
+  periodEnd.setMonth(periodEnd.getMonth() + 1);
+
+  await prisma.subscription.update({
+    where: { id: sub.id },
+    data: { status: "ACTIVE", currentPeriodEnd: periodEnd },
+  });
+
+  const { fee, net } = computePlatformFee(amount, "PIX");
+  await postEntries(sub.plan.creatorId, [
+    {
+      type: "SUB_IN",
+      amount,
+      refType: "Subscription",
+      refId: sub.id,
+      providerEventId: `subscription-paid:${paymentId ?? sub.id + ":" + periodEnd.toISOString()}`,
+      description: `Assinatura "${sub.plan.name}" de ${sub.subscriberName}`,
+    },
+    {
+      type: "FEE",
+      amount: -fee,
+      refType: "Subscription",
+      refId: sub.id,
+      providerEventId: `subscription-fee:${paymentId ?? sub.id + ":" + periodEnd.toISOString()}`,
+      description: "Taxa da plataforma (assinatura)",
+    },
+  ]);
+
+  // Alerta de nova assinatura/renovação na live.
+  const event = await prisma.alertEvent.create({
+    data: {
+      creatorId: sub.plan.creatorId,
+      type: "SUB",
+      payload: { payerName: sub.subscriberName, planName: sub.plan.name, amount: net },
+    },
+  });
+  const profile = await prisma.creatorProfile.findUnique({
+    where: { userId: sub.plan.creatorId },
+    select: { widgetToken: true },
+  });
+  if (profile) {
+    await broadcastToWidget(profile.widgetToken, { type: "alert", eventId: event.id });
+  }
+}
+
+/**
  * Recebe webhooks do Asaas e atualiza o status de cobranças/saques.
  * Fail-closed: se ASAAS_WEBHOOK_SECRET estiver definido, exige o token no header.
  * Idempotente: só grava quando há mudança real de estado.
@@ -127,8 +187,9 @@ export async function POST(req: Request) {
 
   const payload = (await req.json().catch(() => null)) as {
     event?: string;
-    payment?: { id?: string; externalReference?: string; status?: string };
+    payment?: { id?: string; externalReference?: string; status?: string; value?: number };
     transfer?: { id?: string; status?: string };
+    subscription?: { id?: string; externalReference?: string };
   } | null;
 
   if (!payload?.event) {
@@ -168,6 +229,22 @@ export async function POST(req: Request) {
         return NextResponse.json({ received: true });
       }
 
+      // Assinaturas usam externalReference "subscription:{id}" — repete a cada ciclo.
+      if (externalReference?.startsWith("subscription:")) {
+        const ourSubId = externalReference.slice("subscription:".length);
+        if (newStatus === "PAID") {
+          await handleSubscriptionPaid(ourSubId, id, payload.payment?.value ?? 0);
+        } else if (newStatus === "FAILED") {
+          await prisma.subscription
+            .updateMany({
+              where: { id: ourSubId, status: { in: ["PENDING", "ACTIVE"] } },
+              data: { status: "PAST_DUE" },
+            })
+            .catch(() => {});
+        }
+        return NextResponse.json({ received: true });
+      }
+
       if (newStatus) {
         const charge = externalReference
           ? await prisma.charge.findUnique({ where: { id: externalReference } })
@@ -199,6 +276,21 @@ export async function POST(req: Request) {
           }
         }
       }
+    }
+
+    // Cancelamento de assinatura originado no Asaas (ex.: cartão recusado várias vezes).
+    if (
+      (payload.event === "SUBSCRIPTION_DELETED" ||
+        payload.event === "SUBSCRIPTION_INACTIVATED") &&
+      payload.subscription?.externalReference?.startsWith("subscription:")
+    ) {
+      const ourSubId = payload.subscription.externalReference.slice("subscription:".length);
+      await prisma.subscription
+        .updateMany({
+          where: { id: ourSubId, status: { not: "CANCELED" } },
+          data: { status: "CANCELED" },
+        })
+        .catch(() => {});
     }
 
     // Eventos de transferência (saque)
