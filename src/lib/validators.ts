@@ -102,6 +102,35 @@ export const donationSchema = z.object({
 });
 export type DonationInput = z.infer<typeof donationSchema>;
 
+// Verificação/KYC (F5) — dados exigidos pelo Asaas pra criar a subconta do criador.
+export const verificacaoSchema = z
+  .object({
+    cpfCnpj: z
+      .string()
+      .regex(/^\d{11}$|^\d{14}$/, "CPF (11 dígitos) ou CNPJ (14 dígitos), só números"),
+    companyType: z.enum(["INDIVIDUAL", "MEI", "LIMITED", "ASSOCIATION"]),
+    birthDate: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "Data inválida (AAAA-MM-DD)")
+      .optional()
+      .or(z.literal("")),
+    mobilePhone: z
+      .string()
+      .regex(/^\d{10,11}$/, "Telefone com DDD, só números")
+      .optional()
+      .or(z.literal("")),
+    address: z.string().min(3, "Endereço muito curto").max(120),
+    addressNumber: z.string().min(1, "Informe o número").max(10),
+    province: z.string().min(2, "Bairro muito curto").max(60),
+    postalCode: z.string().regex(/^\d{8}$/, "CEP com 8 dígitos, só números"),
+    incomeValue: z.coerce.number().positive("Informe uma renda/faturamento válido"),
+  })
+  .refine((d) => d.companyType !== "INDIVIDUAL" || Boolean(d.birthDate), {
+    message: "Data de nascimento obrigatória para pessoa física",
+    path: ["birthDate"],
+  });
+export type VerificacaoInput = z.infer<typeof verificacaoSchema>;
+
 // Dados do pagador na página pública de pagamento.
 export const payerSchema = z.object({
   payerName: z.string().min(2, "Informe seu nome").max(80),

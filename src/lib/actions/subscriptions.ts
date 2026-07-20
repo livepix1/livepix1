@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { toNumber } from "@/lib/serialize";
-import { getProvider, ProviderNotConfiguredError } from "@/lib/payments";
+import { getProvider, getCreatorSplit, ProviderNotConfiguredError } from "@/lib/payments";
 
 const subscribeSchema = z.object({
   subscriberName: z.string().min(2, "Nome muito curto").max(60),
@@ -42,6 +42,7 @@ export async function subscribeToPlan(planId: string, input: unknown): Promise<S
 
   try {
     const provider = getProvider();
+    const split = await getCreatorSplit(plan.creatorId, "PIX");
     const result = await provider.createSubscription({
       customerName: parsed.data.subscriberName.trim(),
       customerEmail: parsed.data.subscriberEmail.trim(),
@@ -49,6 +50,7 @@ export async function subscribeToPlan(planId: string, input: unknown): Promise<S
       description: `Assinatura: ${plan.name}`,
       externalReference: `subscription:${sub.id}`,
       cycle: "MONTHLY",
+      ...split,
     });
 
     await prisma.subscription.update({

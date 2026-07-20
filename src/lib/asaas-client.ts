@@ -44,7 +44,7 @@ function baseUrl(): string {
 
 async function asaasFetch<T>(
   path: string,
-  init: Omit<RequestInit, "body"> & { body?: unknown } = {}
+  init: Omit<RequestInit, "body"> & { body?: unknown; apiKey?: string } = {}
 ): Promise<T> {
   if (!isConfigured()) {
     throw new AsaasNotConfiguredError();
@@ -54,7 +54,7 @@ async function asaasFetch<T>(
     method: init.method ?? "GET",
     headers: {
       "Content-Type": "application/json",
-      access_token: process.env.ASAAS_API_KEY as string,
+      access_token: init.apiKey ?? (process.env.ASAAS_API_KEY as string),
     },
     body: init.body ? JSON.stringify(init.body) : undefined,
     cache: "no-store",
@@ -90,6 +90,11 @@ export interface AsaasTransfer {
   id: string;
   status: string;
 }
+export interface AsaasSubAccount {
+  id: string; // id da subconta (account id)
+  apiKey: string; // apiKey própria da subconta — cifrar antes de guardar
+  walletId: string; // referenciado no split das cobranças da conta master
+}
 
 /** Cria (ou reaproveita) um customer no Asaas para o pagador. */
 export async function createCustomer(input: {
@@ -108,6 +113,8 @@ export async function createPixCharge(input: {
   value: number;
   description: string;
   externalReference?: string;
+  /** split opcional (F5): direciona parte do valor pra subconta do criador. */
+  split?: { walletId: string; percentualValue: number }[];
 }): Promise<{ charge: AsaasCharge; qr: AsaasPixQr }> {
   const charge = await asaasFetch<AsaasCharge>("/payments", {
     method: "POST",
@@ -118,6 +125,7 @@ export async function createPixCharge(input: {
       dueDate: new Date().toISOString().slice(0, 10),
       description: input.description,
       externalReference: input.externalReference,
+      split: input.split && input.split.length > 0 ? input.split : undefined,
     },
   });
 
@@ -130,11 +138,17 @@ export async function getCharge(chargeId: string): Promise<AsaasCharge> {
   return asaasFetch<AsaasCharge>(`/payments/${chargeId}`);
 }
 
-/** Cria uma transferência (saque) para chave PIX ou conta bancária. */
+/**
+ * Cria uma transferência (saque) para chave PIX ou conta bancária.
+ * Se `apiKey` for passada, a transferência sai da subconta do criador (F5) em vez
+ * da conta master — é assim que o saque vira "grátis e direto", sem passar pelo
+ * saldo interno da plataforma.
+ */
 export async function createTransfer(input: {
   value: number;
   pixKey?: string;
   bank?: { bank: string; agency: string; account: string; ownerName: string };
+  apiKey?: string;
 }): Promise<AsaasTransfer> {
   const body: Record<string, unknown> = { value: input.value };
   if (input.pixKey) {
@@ -143,7 +157,70 @@ export async function createTransfer(input: {
   } else if (input.bank) {
     body.bankAccount = input.bank;
   }
-  return asaasFetch<AsaasTransfer>("/transfers", { method: "POST", body });
+  return asaasFetch<AsaasTransfer>("/transfers", {
+    method: "POST",
+    body,
+    apiKey: input.apiKey,
+  });
+}
+
+/**
+ * Cria a subconta do criador no Asaas (marketplace/whitelabel) — é o passo de KYC.
+ * Sempre chamada com a apiKey da conta MASTER (nunca a do próprio criador, que ainda
+ * não existe). Retorna a apiKey e o walletId da subconta recém-criada — a apiKey deve
+ * ser cifrada (src/lib/crypto.ts) antes de qualquer persistência.
+ */
+export async function createSubAccount(input: {
+  name: string;
+  email: string;
+  cpfCnpj: string;
+  companyType?: "MEI" | "LIMITED" | "INDIVIDUAL" | "ASSOCIATION";
+  birthDate?: string; // YYYY-MM-DD, obrigatório pra pessoa física
+  mobilePhone?: string;
+  address: string;
+  addressNumber: string;
+  province: string; // bairro
+  postalCode: string;
+  incomeValue: number;
+}): Promise<AsaasSubAccount> {
+  const data = await asaasFetch<{
+    id: string;
+    apiKey: string;
+    walletId: string;
+  }>("/accounts", {
+    method: "POST",
+    body: {
+      name: input.name,
+      email: input.email,
+      cpfCnpj: input.cpfCnpj,
+      companyType: input.companyType,
+      birthDate: input.birthDate,
+      mobilePhone: input.mobilePhone,
+      address: input.address,
+      addressNumber: input.addressNumber,
+      province: input.province,
+      postalCode: input.postalCode,
+      incomeValue: input.incomeValue,
+    },
+  });
+  return { id: data.id, apiKey: data.apiKey, walletId: data.walletId };
+}
+
+/** Lista pagamentos recebidos de uma conta (master ou subconta via apiKey override). */
+export async function listReceivedPayments(input: {
+  apiKey?: string;
+  dateCreatedGe: string; // YYYY-MM-DD
+  limit?: number;
+}): Promise<{ id: string; value: number; status: string; externalReference?: string }[]> {
+  const params = new URLSearchParams({
+    status: "RECEIVED",
+    "dateCreated[ge]": input.dateCreatedGe,
+    limit: String(input.limit ?? 100),
+  });
+  const data = await asaasFetch<{
+    data: { id: string; value: number; status: string; externalReference?: string }[];
+  }>(`/payments?${params.toString()}`, { apiKey: input.apiKey });
+  return data.data ?? [];
 }
 
 export { isConfigured as isAsaasConfigured };

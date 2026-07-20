@@ -7,6 +7,7 @@ import {
   AsaasNotConfiguredError,
   AsaasError,
 } from "@/lib/asaas-client";
+import { decrypt } from "@/lib/crypto";
 
 /**
  * Processa um saque já solicitado (Withdrawal PENDING), disparando a transferência
@@ -40,6 +41,23 @@ export async function POST(req: Request) {
     );
   }
 
+  // F5: se o criador já tem subconta aprovada, o saque sai direto de lá (dinheiro
+  // que já é dele) — nunca da conta master. Sem subconta, cai no fluxo antigo.
+  const providerAccount = await prisma.providerAccount.findUnique({
+    where: { userId: session.user.id },
+  });
+  let apiKeyOverride: string | undefined;
+  if (providerAccount?.apiKeyEnc && providerAccount.kycStatus === "APPROVED") {
+    try {
+      apiKeyOverride = decrypt(providerAccount.apiKeyEnc);
+    } catch {
+      return NextResponse.json(
+        { error: "Erro ao acessar a subconta. Avise o suporte." },
+        { status: 500 }
+      );
+    }
+  }
+
   try {
     const transfer = await createTransfer({
       value: withdrawal.netAmount.toNumber(),
@@ -53,6 +71,7 @@ export async function POST(req: Request) {
               ownerName: session.user.name ?? "",
             }
           : undefined,
+      apiKey: apiKeyOverride,
     });
 
     const updated = await prisma.withdrawal.update({

@@ -45,6 +45,39 @@ Workflow local recomendado pra evitar isso: depois de criar um arquivo `"use cli
 novo, mate o processo na porta 3000/3001, `rm -rf .next` e reinicie o dev server ANTES
 de testar a rota que usa esse componente.
 
+## Estado atual (2026-07-20) — F0 a F4 completas e no ar; F5 construída em modo INERTE
+
+**F5 (subcontas Asaas + KYC + split + saques) foi implementada nesta sessão, mas
+segue 100% INERTE** — pedido de habilitação de marketplace já foi feito ao Asaas,
+ainda aguardando aprovação comercial. Nada de dinheiro real se move até essa
+aprovação sair E as chaves de produção substituírem os placeholders.
+
+O que existe agora:
+- `src/lib/crypto.ts` — AES-256-GCM pra cifrar a apiKey de cada subconta (chave
+  mestra em `CRYPTO_MASTER_KEY`, já gerada localmente pra dev — trocar em prod).
+- `src/lib/asaas-client.ts` — `createSubAccount` (cria a subconta/KYC) e
+  `createTransfer`/`listReceivedPayments` aceitando `apiKey` override (pra operar
+  em nome da subconta do criador em vez da master).
+- `dashboard/verificacao` — formulário de KYC do criador → cria a subconta,
+  guarda `subAccountId`/`walletId`/`apiKeyEnc` em `ProviderAccount`
+  (`kycStatus: NONE → PENDING → APPROVED/REJECTED`).
+- Split automático: `getCreatorSplit()` em `src/lib/payments/index.ts` — quando o
+  criador tem `ProviderAccount.kycStatus = APPROVED`, doações e assinaturas
+  (`donations.ts`/`subscriptions.ts`) nascem com split Asaas (líquido direto pra
+  subconta, taxa fica na master). Sem subconta aprovada, comportamento antigo
+  (tudo pra master) continua idêntico.
+- Saque (`/api/asaas/transfer`): se o criador tem subconta aprovada, o saque sai
+  de lá (chave própria descriptografada), não da master.
+- `/api/cron/reconcile` + `vercel.json` (schedule diário, limite do plano Hobby)
+  — compara Donations PAID x extrato Asaas por subconta, só loga divergência
+  (não corrige nada sozinho).
+
+Testado nesta sessão: `tsc --noEmit` limpo, `npm run build` limpo, fluxo real no
+browser logado como `teste@pixflow.com` — submeteu o formulário de verificação,
+recebeu o erro esperado ("Asaas não configurado"), e **nada foi gravado no
+banco** (confirmado via Prisma Client direto). Falta testar contra sandbox Asaas
+de verdade quando a chave `hmlg` estiver disponível.
+
 ## Estado atual (2026-07-20) — F0 a F4 completas, no ar, verificadas
 
 O projeto começou como "PixFlow" (links de pagamento tipo Stripe Payment Links) e

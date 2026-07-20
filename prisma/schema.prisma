@@ -322,6 +322,7 @@ model ProviderAccount {
   userId       String   @unique
   provider     String   @default("ASAAS")
   subAccountId String?
+  walletId     String? // walletId da subconta — referenciado no split das cobranças
   kycStatus    String   @default("NONE") // NONE, PENDING, APPROVED, REJECTED
   apiKeyEnc    String? // apiKey da subconta cifrada (AES-GCM) — nunca em claro
   createdAt    DateTime @default(now())

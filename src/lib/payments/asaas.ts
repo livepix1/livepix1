@@ -22,6 +22,15 @@ import { ProviderNotConfiguredError } from "./provider";
 const SANDBOX_URL = "https://sandbox.asaas.com/api/v3";
 const PROD_URL = "https://api.asaas.com/v3";
 
+/** Monta o array de split do Asaas: percentual líquido pra subconta, resto (a taxa) fica na master. */
+function buildSplit(
+  walletId?: string,
+  netPercent?: number
+): { walletId: string; percentualValue: number }[] | undefined {
+  if (!walletId || netPercent === undefined) return undefined;
+  return [{ walletId, percentualValue: netPercent }];
+}
+
 function baseUrl(): string {
   const key = process.env.ASAAS_API_KEY ?? "";
   return key.includes("hmlg") ? SANDBOX_URL : PROD_URL;
@@ -81,6 +90,7 @@ export const asaasProvider: PaymentProvider = {
         value: input.value,
         description: input.description,
         externalReference: input.externalReference,
+        split: buildSplit(input.splitWalletId, input.splitNetPercent),
       });
       return {
         providerId: charge.id,
@@ -112,6 +122,7 @@ export const asaasProvider: PaymentProvider = {
           cycle: input.cycle,
           description: input.description,
           externalReference: input.externalReference,
+          split: buildSplit(input.splitWalletId, input.splitNetPercent),
         },
       });
       return { providerSubId: sub.id, paymentUrl: sub.invoiceUrl };

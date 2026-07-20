@@ -66,6 +66,10 @@ export interface PaymentProvider {
     value: number;
     description: string;
     externalReference: string;
+    /** walletId da subconta do criador (F5) — quando presente, a cobrança nasce
+     *  com split: o percentual líquido vai direto pra subconta, a taxa fica na master. */
+    splitWalletId?: string;
+    splitNetPercent?: number;
   }): Promise<PixChargeResult>;
 
   createSubscription(input: {
@@ -75,6 +79,8 @@ export interface PaymentProvider {
     description: string;
     externalReference: string;
     cycle: "MONTHLY";
+    splitWalletId?: string;
+    splitNetPercent?: number;
   }): Promise<SubscriptionResult>;
 
   cancelSubscription(providerSubId: string): Promise<void>;

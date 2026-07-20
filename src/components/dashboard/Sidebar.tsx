@@ -13,6 +13,7 @@ const ITEMS = [
   { label: "Metas", href: "/metas" },
   { label: "Assinaturas", href: "/assinaturas" },
   { label: "Moderação", href: "/moderacao" },
+  { label: "Verificação", href: "/verificacao" },
   { label: "Meu Link", href: "/meu-link" },
   { label: "Cobranças", href: "/cobrancas" },
   { label: "Extrato", href: "/extrato" },

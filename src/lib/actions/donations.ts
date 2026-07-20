@@ -4,7 +4,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { donationSchema } from "@/lib/validators";
 import { toNumber } from "@/lib/serialize";
-import { getProvider, ProviderNotConfiguredError } from "@/lib/payments";
+import { getProvider, getCreatorSplit, ProviderNotConfiguredError } from "@/lib/payments";
 
 export type DonationResult =
   | {
@@ -77,12 +77,14 @@ export async function createDonation(
 
   try {
     const provider = getProvider();
+    const split = await getCreatorSplit(user.id, "PIX");
     const charge = await provider.createPixCharge({
       customerName: payerName,
       customerEmail: parsed.data.payerEmail?.trim() || "doador@pixlive.app",
       value: amount,
       description: `Apoio para ${profile.displayName}`,
       externalReference: `donation:${donation.id}`,
+      ...split,
     });
 
     await prisma.donation.update({
