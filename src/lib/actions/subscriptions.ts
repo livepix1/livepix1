@@ -4,10 +4,14 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { toNumber } from "@/lib/serialize";
 import { getProvider, getCreatorSplit, ProviderNotConfiguredError } from "@/lib/payments";
+import { revokeRole } from "@/lib/integrations/discord";
+import { kickMember } from "@/lib/integrations/telegram";
 
 const subscribeSchema = z.object({
   subscriberName: z.string().min(2, "Nome muito curto").max(60),
   subscriberEmail: z.string().email("Email inválido"),
+  discordUserId: z.string().max(40).optional().or(z.literal("")),
+  telegramUserId: z.string().max(40).optional().or(z.literal("")),
 });
 
 export type SubscribeResult =
@@ -36,6 +40,8 @@ export async function subscribeToPlan(planId: string, input: unknown): Promise<S
       planId: plan.id,
       subscriberName: parsed.data.subscriberName.trim(),
       subscriberEmail: parsed.data.subscriberEmail.trim(),
+      discordUserId: parsed.data.discordUserId?.trim() || null,
+      telegramUserId: parsed.data.telegramUserId?.trim() || null,
       status: "PENDING",
     },
   });
@@ -74,7 +80,10 @@ export async function subscribeToPlan(planId: string, input: unknown): Promise<S
 export async function cancelSubscriptionByToken(
   cancelToken: string
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const sub = await prisma.subscription.findUnique({ where: { cancelToken } });
+  const sub = await prisma.subscription.findUnique({
+    where: { cancelToken },
+    include: { plan: true },
+  });
   if (!sub) return { ok: false, error: "Assinatura não encontrada" };
   if (sub.status === "CANCELED") return { ok: true };
 
@@ -94,5 +103,20 @@ export async function cancelSubscriptionByToken(
     where: { id: sub.id },
     data: { status: "CANCELED" },
   });
+
+  // Revogação imediata best-effort (não espera o cron do dia seguinte).
+  if (sub.rewardGranted) {
+    let revoked = false;
+    if (sub.discordUserId && sub.plan.discordGuildId && sub.plan.discordRoleId) {
+      revoked = (await revokeRole(sub.plan.discordGuildId, sub.discordUserId, sub.plan.discordRoleId)) || revoked;
+    }
+    if (sub.telegramUserId && sub.plan.telegramGroupId) {
+      revoked = (await kickMember(sub.plan.telegramGroupId, sub.telegramUserId)) || revoked;
+    }
+    if (revoked) {
+      await prisma.subscription.update({ where: { id: sub.id }, data: { rewardGranted: false } });
+    }
+  }
+
   return { ok: true };
 }

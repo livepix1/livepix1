@@ -45,6 +45,54 @@ Workflow local recomendado pra evitar isso: depois de criar um arquivo `"use cli
 novo, mate o processo na porta 3000/3001, `rm -rf .next` e reinicie o dev server ANTES
 de testar a rota que usa esse componente.
 
+## Estado atual (2026-08-01, sessão 2) — F2 (resto) + F7 + F4b + F8 + F10 completas
+
+Depois da F6, o dono pediu paridade completa com a LivePix ("super SaaS", sem
+copiar literalmente). Pesquisa ao vivo na LivePix confirmou taxas exatas (5%
+PIX / 7% cartão / 7% internacional, **3 saques grátis/mês, depois R$0,50** —
+corrigi uma afirmação errada que eu tinha posto na landing sobre "2FA no
+saque" antes de existir de verdade). Construído nesta leva, cada parte
+verificada com `tsc`+`build`+teste real no browser antes de seguir pra
+próxima:
+
+- **F2 (resto):** Controle Remoto tipo StreamDeck — `/api/remote/{widgetToken}/
+  {skip,pause,resume,replay}`, links GET prontos no painel de Alertas. Testado
+  de verdade via curl (pause/resume reais).
+- **F7:** 2FA (TOTP, RFC 6238 implementado na mão em `src/lib/totp.ts` — sem
+  dependência nova, validado bit-a-bit contra o vetor oficial da RFC) exigido
+  no saque quando ativado (`/seguranca`). Rate limit best-effort
+  (`src/lib/rate-limit.ts`, tabela `RateLimit`) em login (10/15min por email) e
+  em `createDonation` (20/10min por IP). **Testado de ponta a ponta**: gerei o
+  segredo, calculei o TOTP real e confirmei a ativação — persistiu cifrado no
+  banco (AES-GCM).
+- **F4b:** bots Discord/Telegram terminados (não só stub). Assinante informa
+  `discordUserId`/`telegramUserId` na hora de assinar; `CreatorPlan` ganhou
+  `discordGuildId`. Cron diário `/api/cron/sync-rewards` concede/revoga cargo
+  (Discord) ou convite/kick (Telegram) conforme o status da assinatura;
+  cancelamento por link mágico já revoga na hora (não espera o cron).
+- **F8:** API pública v1 (`/api/v1/donations` GET, `/api/v1/alerts/{action}`
+  POST) com API keys (`Bearer`, escopos read/write/alerts,
+  `src/lib/api-auth.ts`) + webhooks de saída assinados HMAC-SHA256
+  (`src/lib/webhooks.ts`, dispara em `payment.new`). Painel em
+  `/configuracoes/api`. **Testado de ponta a ponta** via curl: chave real
+  criada, GET autenticado funcionou, e o bloqueio de escopo foi confirmado
+  (401 numa chave só-leitura tentando controlar alerta).
+- **F10:** Conexões OAuth do criador (Discord/Twitch/Twitter/Kick) —
+  `SocialConnection`, fluxo genérico em `src/lib/oauth/` (state assinado HMAC,
+  sem tabela extra pra CSRF), painel em `/configuracoes/conexoes`. INERTE sem
+  as credenciais OAuth de cada provider.
+
+Tudo cifrado que precisa ser recuperado (2FA secret, OAuth tokens) usa
+`src/lib/crypto.ts` (mesmo AES-GCM da F5). API keys usam hash SHA-256
+(`src/lib/api-auth.ts`) — nunca precisam ser lidas de volta, só reconhecidas.
+
+⚠️ **Nota de ferramenta desta sessão:** o clique simulado do Browser (`computer`
+tool) ficou consistentemente quebrado (`viewport 0x0`, coordenadas erradas tipo
+`(0, y)`) — toda ação de clique/submit precisou ser feita via `form_input` (pra
+preencher campo controlado do React corretamente) + `.click()` via JS explícito
+no elemento (não coordenada). Se isso se repetir, não perca tempo tentando
+`computer.left_click` — vá direto pro padrão JS.
+
 ## Estado atual (2026-08-01) — F6 completa: landing nova + campanhas/vaquinhas
 
 **F6 (landing de vendas nova + vaquinhas/campanhas) foi construída e verificada

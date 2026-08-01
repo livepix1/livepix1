@@ -31,6 +31,10 @@ model User {
 
   pixKey String?
 
+  // 2FA (F7) — TOTP obrigatório no saque quando ativado.
+  totpSecretEnc String? // segredo cifrado (AES-GCM, src/lib/crypto.ts) — nunca em claro
+  totpEnabled   Boolean @default(false)
+
   paymentLinks     PaymentLink[]
   charges          Charge[]
   withdrawals      Withdrawal[]
@@ -47,6 +51,7 @@ model User {
   providerAccount  ProviderAccount?
   apiKeys          ApiKey[]
   webhookEndpoints WebhookEndpoint[]
+  socialConnections SocialConnection[]
 }
 
 model Account {
@@ -260,6 +265,7 @@ model CreatorPlan {
   interval        String   @default("MONTHLY")
   rewards         Json? // lista de benefícios exibidos
   discordRoleId   String?
+  discordGuildId  String? // ID do servidor Discord onde o cargo existe
   telegramGroupId String?
   isActive        Boolean  @default(true)
   createdAt       DateTime @default(now())
@@ -281,6 +287,11 @@ model Subscription {
   cancelToken      String    @unique @default(cuid()) // link mágico de cancelamento
   currentPeriodEnd DateTime?
   createdAt        DateTime  @default(now())
+
+  // Recompensas automáticas (F4b) — IDs que o assinante informa na hora de assinar.
+  discordUserId  String?
+  telegramUserId String?
+  rewardGranted  Boolean @default(false) // evita grant/revoke repetido no cron
 
   plan CreatorPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
 
@@ -359,4 +370,31 @@ model WebhookEndpoint {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+// Rate limit best-effort (F7) — janela deslizante simples por chave (ex.: "login:email").
+model RateLimit {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  count       Int      @default(1)
+  windowStart DateTime @default(now())
+}
+
+// Conexões OAuth do CRIADOR (F10) — Discord/Twitch/Twitter/Kick, espelha o
+// "account.livepix.gg/connections" confirmado na pesquisa de concorrência.
+// INERTE sem client id/secret do provider configurado no .env.
+model SocialConnection {
+  id                String    @id @default(cuid())
+  userId            String
+  provider          String // DISCORD, TWITCH, TWITTER, KICK
+  providerUserId    String
+  providerUsername  String?
+  accessTokenEnc    String? // cifrado (AES-GCM, src/lib/crypto.ts) — nunca em claro
+  refreshTokenEnc   String?
+  expiresAt         DateTime?
+  createdAt         DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, provider])
 }

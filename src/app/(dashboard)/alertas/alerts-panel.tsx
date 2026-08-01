@@ -25,6 +25,7 @@ export interface RecentAlert {
 interface Props {
   widgetUrl: string;
   qrUrl: string;
+  remoteBase: string;
   paused: boolean;
   initial: {
     soundUrl: string;
@@ -37,7 +38,7 @@ interface Props {
   recent: RecentAlert[];
 }
 
-export function AlertsPanel({ widgetUrl, qrUrl, paused, initial, recent }: Props) {
+export function AlertsPanel({ widgetUrl, qrUrl, remoteBase, paused, initial, recent }: Props) {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<string | null>(null);
@@ -128,6 +129,28 @@ export function AlertsPanel({ widgetUrl, qrUrl, paused, initial, recent }: Props
           <Button variant="ghost" onClick={() => run("clear", () => controlQueue("clear"))}>
             🗑 Limpar pendentes
           </Button>
+        </div>
+      </div>
+
+      {/* Controle Remoto (StreamDeck) */}
+      <div className="rounded-2xl border border-white/10 bg-pixflow-darker/50 p-5">
+        <p className="font-medium text-pixflow-slate">Controle Remoto (StreamDeck)</p>
+        <p className="mt-1 text-xs text-white/40">
+          Cole cada link como uma ação &quot;Website&quot; no StreamDeck (ou qualquer
+          automação que aceite abrir uma URL) pra controlar a fila sem abrir o painel.
+        </p>
+        <div className="mt-3 grid gap-2">
+          {[
+            { label: "Pular alerta atual", path: "skip" },
+            { label: "Pausar fila", path: "pause" },
+            { label: "Retomar fila", path: "resume" },
+            { label: "Reexibir último alerta", path: "replay" },
+          ].map((r) => (
+            <div key={r.path}>
+              <span className="mb-1 block text-xs text-white/50">{r.label}</span>
+              <CopyLink url={`${remoteBase}/${r.path}`} />
+            </div>
+          ))}
         </div>
       </div>
 

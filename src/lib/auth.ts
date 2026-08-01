@@ -6,6 +6,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import bcrypt from "bcryptjs";
 import { prisma } from "./prisma";
+import { checkRateLimit } from "./rate-limit";
 
 const providers: NextAuthOptions["providers"] = [
   CredentialsProvider({
@@ -19,8 +20,15 @@ const providers: NextAuthOptions["providers"] = [
         throw new Error("Email e senha obrigatórios");
       }
 
+      const email = credentials.email.toLowerCase().trim();
+      // 10 tentativas / 15 min por email — mitiga força bruta sem travar quem erra a senha 1-2x.
+      const allowed = await checkRateLimit(`login:${email}`, 10, 15 * 60 * 1000);
+      if (!allowed) {
+        throw new Error("Muitas tentativas. Aguarde alguns minutos e tente de novo.");
+      }
+
       const user = await prisma.user.findUnique({
-        where: { email: credentials.email.toLowerCase().trim() },
+        where: { email },
       });
 
       if (!user || !user.passwordHash) {

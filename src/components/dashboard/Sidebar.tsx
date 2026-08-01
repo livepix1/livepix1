@@ -19,6 +19,9 @@ const ITEMS = [
   { label: "Cobranças", href: "/cobrancas" },
   { label: "Extrato", href: "/extrato" },
   { label: "Saques", href: "/saques" },
+  { label: "Conexões", href: "/configuracoes/conexoes" },
+  { label: "API & Webhooks", href: "/configuracoes/api" },
+  { label: "Segurança", href: "/seguranca" },
   { label: "Perfil", href: "/perfil" },
 ];
 

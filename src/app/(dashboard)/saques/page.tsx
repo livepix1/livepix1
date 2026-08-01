@@ -27,7 +27,7 @@ export default async function SaquesPage() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card accent>
-          <WithdrawalForm balance={balance} />
+          <WithdrawalForm balance={balance} totpEnabled={user.totpEnabled} />
         </Card>
 
         <Card>

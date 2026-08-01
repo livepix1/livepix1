@@ -12,6 +12,8 @@ import {
 } from "@/lib/validators";
 import { computeWithdrawalFee, getBalance } from "@/lib/finance";
 import { postEntry } from "@/lib/ledger";
+import { decrypt } from "@/lib/crypto";
+import { verifyTotpToken } from "@/lib/totp";
 
 export type ActionResult =
   | { ok: true; message?: string }
@@ -80,6 +82,25 @@ export async function requestWithdrawal(input: unknown): Promise<ActionResult> {
       error: "Dados inválidos",
       fieldErrors: collectFieldErrors(parsed.error),
     };
+  }
+
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (user?.totpEnabled && user.totpSecretEnc) {
+    const code = parsed.data.totpCode?.trim() || "";
+    if (!code) {
+      return {
+        ok: false,
+        error: "Código do autenticador obrigatório pra sacar",
+        fieldErrors: { totpCode: "Obrigatório" },
+      };
+    }
+    if (!verifyTotpToken(decrypt(user.totpSecretEnc), code)) {
+      return {
+        ok: false,
+        error: "Código do autenticador inválido",
+        fieldErrors: { totpCode: "Código inválido" },
+      };
+    }
   }
 
   const balance = await getBalance(userId);

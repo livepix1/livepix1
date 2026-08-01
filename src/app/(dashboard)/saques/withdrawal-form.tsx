@@ -8,7 +8,13 @@ import { requestWithdrawal } from "@/lib/actions/dashboard";
 import { computeWithdrawalFee, WITHDRAWAL_FEE_FIXED } from "@/lib/fee";
 import { formatBRL } from "@/lib/serialize";
 
-export function WithdrawalForm({ balance }: { balance: number }) {
+export function WithdrawalForm({
+  balance,
+  totpEnabled,
+}: {
+  balance: number;
+  totpEnabled: boolean;
+}) {
   const [amount, setAmount] = useState("");
   const [destinationType, setDestinationType] = useState<"PIX" | "BANK">("PIX");
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -33,6 +39,7 @@ export function WithdrawalForm({ balance }: { balance: number }) {
       destinationBank: String(form.get("destinationBank") || ""),
       destinationAgency: String(form.get("destinationAgency") || ""),
       destinationAccount: String(form.get("destinationAccount") || ""),
+      totpCode: String(form.get("totpCode") || ""),
     };
 
     const parsed = withdrawalSchema.safeParse(raw);
@@ -125,6 +132,12 @@ export function WithdrawalForm({ balance }: { balance: number }) {
           <span>{formatBRL(net)}</span>
         </div>
       </div>
+
+      {totpEnabled && (
+        <Field label="Código do autenticador (2FA)" error={errors.totpCode}>
+          <Input name="totpCode" placeholder="000000" maxLength={6} />
+        </Field>
+      )}
 
       <div>
         <Button type="submit" disabled={loading || amountNum <= 0}>

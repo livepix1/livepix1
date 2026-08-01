@@ -16,6 +16,7 @@ const planSchema = z.object({
   price: z.coerce.number().positive("O preço precisa ser positivo"),
   rewards: z.string().max(500).optional().or(z.literal("")), // uma vantagem por linha
   discordRoleId: z.string().max(40).optional().or(z.literal("")),
+  discordGuildId: z.string().max(40).optional().or(z.literal("")),
   telegramGroupId: z.string().max(40).optional().or(z.literal("")),
 });
 
@@ -48,6 +49,7 @@ export async function createPlan(input: unknown): Promise<ActionResult> {
       price: new Prisma.Decimal(parsed.data.price),
       rewards: rewardsList,
       discordRoleId: parsed.data.discordRoleId?.trim() || null,
+      discordGuildId: parsed.data.discordGuildId?.trim() || null,
       telegramGroupId: parsed.data.telegramGroupId?.trim() || null,
     },
   });

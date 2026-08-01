@@ -12,6 +12,8 @@ export interface PublicPlan {
   description: string | null;
   price: number;
   rewards: string[];
+  hasDiscordReward: boolean;
+  hasTelegramReward: boolean;
 }
 
 function PlanCard({ plan }: { plan: PublicPlan }) {
@@ -29,6 +31,8 @@ function PlanCard({ plan }: { plan: PublicPlan }) {
     const raw = {
       subscriberName: String(form.get("subscriberName") || ""),
       subscriberEmail: String(form.get("subscriberEmail") || ""),
+      discordUserId: String(form.get("discordUserId") || ""),
+      telegramUserId: String(form.get("telegramUserId") || ""),
     };
     setLoading(true);
     const res = await subscribeToPlan(plan.id, raw);
@@ -81,6 +85,16 @@ function PlanCard({ plan }: { plan: PublicPlan }) {
           <Field label="Seu email" error={errors.subscriberEmail}>
             <Input name="subscriberEmail" type="email" placeholder="voce@email.com" />
           </Field>
+          {plan.hasDiscordReward && (
+            <Field label="Seu ID do Discord" hint="Ative o modo desenvolvedor no Discord pra copiar seu ID">
+              <Input name="discordUserId" placeholder="123456789012345678" />
+            </Field>
+          )}
+          {plan.hasTelegramReward && (
+            <Field label="Seu ID do Telegram" hint="Peça pro bot @userinfobot pra descobrir seu ID">
+              <Input name="telegramUserId" placeholder="123456789" />
+            </Field>
+          )}
           <Button type="submit" fullWidth disabled={loading}>
             {loading ? "Criando..." : "Assinar"}
           </Button>

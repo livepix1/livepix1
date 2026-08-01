@@ -35,6 +35,7 @@ export function PlansPanel({ plans }: { plans: PlanRow[] }) {
       price: String(form.get("price") || ""),
       rewards: String(form.get("rewards") || ""),
       discordRoleId: String(form.get("discordRoleId") || ""),
+      discordGuildId: String(form.get("discordGuildId") || ""),
       telegramGroupId: String(form.get("telegramGroupId") || ""),
     };
     setLoading(true);
@@ -75,7 +76,10 @@ export function PlansPanel({ plans }: { plans: PlanRow[] }) {
         <Field label="Vantagens" hint="Uma por linha">
           <Textarea name="rewards" placeholder={"Cargo exclusivo no Discord\nAcesso ao grupo VIP"} />
         </Field>
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Field label="Servidor do Discord (ID)" hint="Opcional — requer bot conectado">
+            <Input name="discordGuildId" placeholder="123456789012345678" />
+          </Field>
           <Field label="Cargo do Discord (ID)" hint="Opcional — requer bot conectado">
             <Input name="discordRoleId" placeholder="123456789012345678" />
           </Field>

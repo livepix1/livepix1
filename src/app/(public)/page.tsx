@@ -44,7 +44,7 @@ const CARDS = [
   },
   {
     title: "Segurança e saque sempre grátis",
-    text: "Extrato imutável com comprovante por transação (nunca mais um \"PIX sumiu\"), 2FA no saque, e — diferente do resto do mercado — sacar nunca custa nada.",
+    text: "Extrato imutável com comprovante por transação (nunca mais um \"PIX sumiu\") e — diferente do resto do mercado, que libera só 3 saques grátis por mês — sacar nunca custa nada, nenhuma vez.",
   },
 ];
 

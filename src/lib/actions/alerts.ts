@@ -111,29 +111,65 @@ export async function replayAlert(eventId: string): Promise<ActionResult> {
   return { ok: true, message: "Replay enviado" };
 }
 
-/** Controles da fila: skip do atual, pausar/retomar, limpar pendentes. */
-export async function controlQueue(
+/**
+ * Núcleo do controle de fila, sem exigir sessão — usado tanto pelo painel
+ * (após requireSession) quanto pelo Controle Remoto tipo StreamDeck
+ * (autenticado só pelo widgetToken, já secreto/regenerável).
+ */
+export async function runControlCommand(
+  creatorId: string,
   action: "skip" | "pause" | "resume" | "clear"
 ): Promise<ActionResult> {
-  const session = await requireSession();
-  const profile = await getOwnProfile(session.user.id);
+  const profile = await getOwnProfile(creatorId);
   if (!profile) return { ok: false, error: "Crie sua página primeiro" };
 
   if (action === "pause" || action === "resume") {
     await prisma.alertConfig.upsert({
-      where: { creatorId: session.user.id },
+      where: { creatorId },
       update: { paused: action === "pause" },
-      create: { creatorId: session.user.id, paused: action === "pause" },
+      create: { creatorId, paused: action === "pause" },
     });
   }
   if (action === "clear") {
     await prisma.alertEvent.updateMany({
-      where: { creatorId: session.user.id, displayedAt: null, skippedAt: null },
+      where: { creatorId, displayedAt: null, skippedAt: null },
       data: { skippedAt: new Date() },
     });
   }
 
   await broadcastToWidget(profile.widgetToken, { type: "control", action });
-  revalidatePath("/alertas");
   return { ok: true, message: "Comando enviado" };
+}
+
+/** Controles da fila: skip do atual, pausar/retomar, limpar pendentes. */
+export async function controlQueue(
+  action: "skip" | "pause" | "resume" | "clear"
+): Promise<ActionResult> {
+  const session = await requireSession();
+  const result = await runControlCommand(session.user.id, action);
+  revalidatePath("/alertas");
+  return result;
+}
+
+/** Reenfileira o último alerta exibido (usado pelo Controle Remoto — sem precisar escolher qual). */
+export async function replayLatestAlert(creatorId: string): Promise<ActionResult> {
+  const profile = await getOwnProfile(creatorId);
+  if (!profile) return { ok: false, error: "Crie sua página primeiro" };
+
+  const original = await prisma.alertEvent.findFirst({
+    where: { creatorId, displayedAt: { not: null } },
+    orderBy: { displayedAt: "desc" },
+  });
+  if (!original) return { ok: false, error: "Nenhum alerta exibido ainda" };
+
+  const clone = await prisma.alertEvent.create({
+    data: {
+      creatorId,
+      donationId: original.donationId,
+      type: original.type,
+      payload: original.payload as Prisma.InputJsonValue,
+    },
+  });
+  await broadcastToWidget(profile.widgetToken, { type: "alert", eventId: clone.id });
+  return { ok: true, message: "Replay enviado" };
 }

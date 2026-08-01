@@ -46,6 +46,8 @@ export default async function CreatorPage({
     description: p.description,
     price: toNumber(p.price),
     rewards: Array.isArray(p.rewards) ? (p.rewards as string[]) : [],
+    hasDiscordReward: Boolean(p.discordRoleId && p.discordGuildId),
+    hasTelegramReward: Boolean(p.telegramGroupId),
   }));
 
   return (

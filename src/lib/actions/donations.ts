@@ -1,10 +1,12 @@
 "use server";
 
+import { headers } from "next/headers";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { donationSchema } from "@/lib/validators";
 import { toNumber } from "@/lib/serialize";
 import { getProvider, getCreatorSplit, ProviderNotConfiguredError } from "@/lib/payments";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export type DonationResult =
   | {
@@ -20,6 +22,13 @@ export async function createDonation(
   username: string,
   input: unknown
 ): Promise<DonationResult> {
+  const ip = headers().get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  // 20 doações/10min por IP — mitiga abuso sem incomodar quem só está testando valores.
+  const allowed = await checkRateLimit(`donation:${ip}`, 20, 10 * 60 * 1000);
+  if (!allowed) {
+    return { ok: false, error: "Muitas tentativas. Aguarde alguns minutos e tente de novo." };
+  }
+
   const parsed = donationSchema.safeParse(input);
   if (!parsed.success) {
     const fe: Record<string, string> = {};

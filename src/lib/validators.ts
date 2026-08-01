@@ -36,6 +36,7 @@ export const withdrawalSchema = z
     destinationBank: z.string().optional().or(z.literal("")),
     destinationAgency: z.string().optional().or(z.literal("")),
     destinationAccount: z.string().optional().or(z.literal("")),
+    totpCode: z.string().optional().or(z.literal("")),
   })
   .refine(
     (d) =>
@@ -56,7 +57,7 @@ export const RESERVED_USERNAMES = new Set([
   "login", "signup", "logout", "dashboard", "api", "pay", "widget", "admin",
   "meu-link", "cobrancas", "saques", "perfil", "extrato", "metas", "alertas",
   "assinaturas", "assinatura", "moderacao", "configuracoes", "verificacao", "analytics",
-  "c", "campanhas", "app", "www", "suporte", "ajuda", "termos", "privacidade",
+  "seguranca", "c", "campanhas", "app", "www", "suporte", "ajuda", "termos", "privacidade",
   "sobre", "precos", "taxas", "blog", "docs", "static", "_next", "favicon.ico",
 ]);
 

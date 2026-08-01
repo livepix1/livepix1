@@ -4,6 +4,7 @@ import { postEntry, postEntries } from "@/lib/ledger";
 import { toNumber } from "@/lib/serialize";
 import { computePlatformFee } from "@/lib/fee";
 import { broadcastToWidget } from "@/lib/realtime";
+import { dispatchWebhook } from "@/lib/webhooks";
 
 /** Palavrões básicos PT-BR — mensagem flagrada não vai pro TTS/tela. */
 const BANNED_WORDS =
@@ -107,6 +108,14 @@ async function handleDonationPaid(donationId: string, providerId?: string | null
       });
     }
   }
+
+  await dispatchWebhook(donation.creatorId, "payment.new", {
+    donationId: donation.id,
+    payerName: donation.payerName,
+    amount,
+    net,
+    method: donation.method,
+  });
 }
 
 /**

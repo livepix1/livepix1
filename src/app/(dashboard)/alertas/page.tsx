@@ -43,6 +43,7 @@ export default async function AlertasPage() {
   const base = process.env.NEXTAUTH_URL || "";
   const widgetUrl = `${base}/widget/${profile.widgetToken}`;
   const qrUrl = `${base}/widget/${profile.widgetToken}/qr`;
+  const remoteBase = `${base}/api/remote/${profile.widgetToken}`;
 
   const recent: RecentAlert[] = events.map((e) => {
     const p = e.payload as {
@@ -72,6 +73,7 @@ export default async function AlertasPage() {
         <AlertsPanel
           widgetUrl={widgetUrl}
           qrUrl={qrUrl}
+          remoteBase={remoteBase}
           paused={config?.paused ?? false}
           initial={{
             soundUrl: config?.soundUrl ?? "",
