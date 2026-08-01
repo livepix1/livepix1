@@ -7,10 +7,10 @@ import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 
 const NAV = [
-  { label: "Como funciona", href: "#como-funciona" },
-  { label: "Para quem", href: "#nichos" },
-  { label: "Receber", href: "#receber" },
-  { label: "Vantagens", href: "#vantagens" },
+  { label: "Recursos", href: "#recursos" },
+  { label: "Taxas", href: "#comparativo" },
+  { label: "Modo autônomo", href: "#autonomo" },
+  { label: "FAQ", href: "#faq" },
 ];
 
 export function SiteHeader() {

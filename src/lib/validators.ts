@@ -99,8 +99,23 @@ export const donationSchema = z.object({
   message: z.string().max(400).optional().or(z.literal("")),
   amount: z.coerce.number().positive("Valor inválido").max(50000),
   goalId: z.string().optional(),
+  campaignId: z.string().optional(),
 });
 export type DonationInput = z.infer<typeof donationSchema>;
+
+// Campanha/vaquinha (F6) — página pública própria em /c/[username]/campanhas/[slug].
+export const campaignSchema = z.object({
+  title: z.string().min(3, "Título muito curto").max(80),
+  slug: z
+    .string()
+    .min(3, "Mínimo de 3 caracteres")
+    .max(50)
+    .regex(/^[a-z0-9-]+$/, "Use só letras minúsculas, números e hífen"),
+  description: z.string().max(500, "Máximo de 500 caracteres").optional().or(z.literal("")),
+  targetAmount: z.coerce.number().positive("O alvo precisa ser positivo").optional().or(z.nan()),
+  endsAt: z.string().optional().or(z.literal("")),
+});
+export type CampaignInput = z.infer<typeof campaignSchema>;
 
 // Verificação/KYC (F5) — dados exigidos pelo Asaas pra criar a subconta do criador.
 export const verificacaoSchema = z

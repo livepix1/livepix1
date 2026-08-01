@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { cn } from "@/lib/cn";
+import { BRAND } from "@/lib/brand";
 
 export function Logo({ className, href = "/" }: { className?: string; href?: string }) {
   return (
@@ -7,8 +8,7 @@ export function Logo({ className, href = "/" }: { className?: string; href?: str
       href={href}
       className={cn("inline-flex items-center gap-2 font-display text-xl", className)}
     >
-      <span className="text-gradient-neon">Pix</span>
-      <span className="text-pixflow-slate">Flow</span>
+      <span className="text-gradient-neon">{BRAND.name}</span>
     </Link>
   );
 }

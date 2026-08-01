@@ -62,6 +62,16 @@ export async function createDonation(
     goalId = goal?.id ?? null;
   }
 
+  // Campanha ativa (se informada) precisa pertencer ao criador.
+  let campaignId: string | null = null;
+  if (parsed.data.campaignId) {
+    const campaign = await prisma.campaign.findFirst({
+      where: { id: parsed.data.campaignId, creatorId: user.id, status: "ACTIVE" },
+      select: { id: true },
+    });
+    campaignId = campaign?.id ?? null;
+  }
+
   const donation = await prisma.donation.create({
     data: {
       creatorId: user.id,
@@ -72,6 +82,7 @@ export async function createDonation(
       method: "PIX",
       status: "PENDING",
       goalId,
+      campaignId,
     },
   });
 

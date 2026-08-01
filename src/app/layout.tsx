@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Sora, Inter } from "next/font/google";
 import { Providers } from "@/components/providers";
+import { BRAND } from "@/lib/brand";
 import "./globals.css";
 
 const sora = Sora({
@@ -18,9 +19,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "PixFlow — Receba pagamentos por um link",
-  description:
-    "Crie seu link de pagamento PIX em segundos e receba de qualquer pessoa, em qualquer lugar.",
+  title: `${BRAND.name} — ${BRAND.tagline}`,
+  description: `${BRAND.tagline}. Taxa de ${BRAND.fees.pixPercent}% e saque sempre grátis.`,
 };
 
 export default function RootLayout({

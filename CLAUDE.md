@@ -45,6 +45,33 @@ Workflow local recomendado pra evitar isso: depois de criar um arquivo `"use cli
 novo, mate o processo na porta 3000/3001, `rm -rf .next` e reinicie o dev server ANTES
 de testar a rota que usa esse componente.
 
+## Estado atual (2026-08-01) — F6 completa: landing nova + campanhas/vaquinhas
+
+**F6 (landing de vendas nova + vaquinhas/campanhas) foi construída e verificada
+nesta sessão.** A home antiga (copy do "PixFlow" modo autônomo, com a seção
+`#receber` genérica) foi substituída por uma landing AIDA focada no criador:
+hero com a tagline real (`BRAND.tagline`), bloco de dor, tabela comparativa de
+taxas (4% nosso vs ~6% média do mercado, sem citar marcas), grade de 6 recursos,
+seção do modo autônomo como diferencial, prova social honesta (beta) e FAQ.
+`Logo.tsx` e o `<title>` do app também pararam de hardcodar "PixFlow" e passaram
+a ler de `BRAND` — antes disso a aba do navegador nunca refletia o pivô pra
+PixLive, o que gerou confusão no início desta sessão.
+
+Vaquinhas/campanhas (`Campaign`, já no schema desde a F0) ganharam CRUD completo:
+`dashboard/campanhas` (criar/encerrar/reativar/excluir — excluir vira "cancelar"
+se já tiver doação, pra não perder o extrato) e página pública própria em
+`/c/[username]/campanhas/[slug]` (nested, não bare-root — evita o bug de
+roteamento já documentado), com barra de progresso ao vivo (polling, mesmo
+padrão do `GoalsLive` do F3) e doação escopada pra campanha (`createDonation`
+ganhou `campaignId` opcional).
+
+Testado nesta sessão: `tsc --noEmit` e `npm run build` limpos, fluxo real no
+browser (login, criação de campanha, página pública renderizando progresso e
+formulário de doação corretamente). **Nota de infra:** o Supabase
+(`cnhbynfsksfcngvfdxba`) pausou por inatividade no meio desta sessão — se voltar
+a acontecer, é só reativar no painel do Supabase (Free tier pausa projetos
+inativos); não é bug de código.
+
 ## Estado atual (2026-07-20) — F0 a F4 completas e no ar; F5 construída em modo INERTE
 
 **F5 (subcontas Asaas + KYC + split + saques) foi implementada nesta sessão, mas

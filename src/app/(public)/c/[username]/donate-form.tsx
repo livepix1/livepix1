@@ -15,6 +15,8 @@ interface DonateFormProps {
   minDonation: number;
   maxMessageLen: number;
   goals: { id: string; title: string }[];
+  /** Fixa a doação numa campanha específica (página /campanhas/[slug]) — some com o seletor de meta. */
+  campaignId?: string;
 }
 
 type QrState = { donationId: string; qrImage: string; pixCode: string };
@@ -25,6 +27,7 @@ export function DonateForm({
   minDonation,
   maxMessageLen,
   goals,
+  campaignId,
 }: DonateFormProps) {
   const [amount, setAmount] = useState<string>("10");
   const [message, setMessage] = useState("");
@@ -63,6 +66,7 @@ export function DonateForm({
       message,
       amount: Number(amount.replace(",", ".")) || 0,
       goalId: String(form.get("goalId") || "") || undefined,
+      campaignId,
     };
 
     if (raw.amount < minDonation) {
@@ -193,7 +197,7 @@ export function DonateForm({
         />
       </div>
 
-      {goals.length > 0 && (
+      {!campaignId && goals.length > 0 && (
         <Field label="Contribuir para uma meta (opcional)">
           <select
             name="goalId"

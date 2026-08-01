@@ -11,6 +11,7 @@ const ITEMS = [
   { label: "Minha Página", href: "/configuracoes/pagina" },
   { label: "Alertas", href: "/alertas" },
   { label: "Metas", href: "/metas" },
+  { label: "Campanhas", href: "/campanhas" },
   { label: "Assinaturas", href: "/assinaturas" },
   { label: "Moderação", href: "/moderacao" },
   { label: "Verificação", href: "/verificacao" },
