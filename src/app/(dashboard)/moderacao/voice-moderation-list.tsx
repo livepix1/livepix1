@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { Check, X, Mic } from "lucide-react";
 import { reviewVoiceMessage } from "@/lib/actions/moderation";
 import { formatBRL } from "@/lib/serialize";
+import { EmptyState } from "@/components/dashboard/EmptyState";
 
 export interface PendingVoiceDonation {
   id: string;
@@ -28,11 +30,7 @@ export function VoiceModerationList({ items }: { items: PendingVoiceDonation[] }
   const visible = items.filter((i) => !hidden.has(i.id));
 
   if (visible.length === 0) {
-    return (
-      <p className="py-10 text-center text-sm text-white/40">
-        Nenhuma mensagem de áudio/vídeo pendente de revisão. 👍
-      </p>
-    );
+    return <EmptyState icon={Mic} title="Nenhuma mensagem de áudio/vídeo pendente" />;
   }
 
   return (
@@ -65,17 +63,17 @@ export function VoiceModerationList({ items }: { items: PendingVoiceDonation[] }
               type="button"
               onClick={() => decide(d.id, true)}
               disabled={loading === d.id}
-              className="rounded-lg border border-emerald-500/40 px-3 py-1.5 text-xs text-emerald-400 hover:bg-emerald-500/10"
+              className="flex items-center gap-1 rounded-lg border border-emerald-500/40 px-3 py-1.5 text-xs text-emerald-400 hover:bg-emerald-500/10"
             >
-              ✓ Aprovar
+              <Check size={13} /> Aprovar
             </button>
             <button
               type="button"
               onClick={() => decide(d.id, false)}
               disabled={loading === d.id}
-              className="rounded-lg border border-pixflow-magenta/40 px-3 py-1.5 text-xs text-pixflow-magenta hover:bg-pixflow-magenta/10"
+              className="flex items-center gap-1 rounded-lg border border-pixflow-magenta/40 px-3 py-1.5 text-xs text-pixflow-magenta hover:bg-pixflow-magenta/10"
             >
-              ✕ Bloquear
+              <X size={13} /> Bloquear
             </button>
           </div>
         </div>

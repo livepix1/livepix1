@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { Bell, SkipForward, Play, Pause, Trash2, RotateCcw, Radio } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Field, Input, Select } from "@/components/ui/Input";
 import { CopyLink } from "@/components/dashboard/CopyLink";
+import { EmptyState } from "@/components/dashboard/EmptyState";
 import {
   saveAlertConfig,
   sendTestAlert,
@@ -98,7 +100,13 @@ export function AlertsPanel({ widgetUrl, qrUrl, remoteBase, paused, initial, rec
             onClick={() => run("test", sendTestAlert)}
             disabled={loading === "test"}
           >
-            {loading === "test" ? "Enviando..." : "🔔 Testar alerta"}
+            {loading === "test" ? (
+              "Enviando..."
+            ) : (
+              <>
+                <Bell size={15} /> Testar alerta
+              </>
+            )}
           </Button>
           <Button
             variant="ghost"
@@ -115,19 +123,19 @@ export function AlertsPanel({ widgetUrl, qrUrl, remoteBase, paused, initial, rec
         <p className="mb-3 font-medium text-pixflow-slate">Fila de alertas</p>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={() => run("skip", () => controlQueue("skip"))}>
-            ⏭ Pular atual
+            <SkipForward size={15} /> Pular atual
           </Button>
           {paused ? (
             <Button variant="outline" onClick={() => run("resume", () => controlQueue("resume"))}>
-              ▶ Retomar fila
+              <Play size={15} /> Retomar fila
             </Button>
           ) : (
             <Button variant="outline" onClick={() => run("pause", () => controlQueue("pause"))}>
-              ⏸ Pausar fila
+              <Pause size={15} /> Pausar fila
             </Button>
           )}
           <Button variant="ghost" onClick={() => run("clear", () => controlQueue("clear"))}>
-            🗑 Limpar pendentes
+            <Trash2 size={15} /> Limpar pendentes
           </Button>
         </div>
       </div>
@@ -200,7 +208,7 @@ export function AlertsPanel({ widgetUrl, qrUrl, remoteBase, paused, initial, rec
       <div className="rounded-2xl border border-white/10 bg-pixflow-darker/50 p-5">
         <p className="mb-3 font-medium text-pixflow-slate">Últimos alertas</p>
         {recent.length === 0 ? (
-          <p className="py-4 text-center text-sm text-white/40">Nenhum alerta ainda.</p>
+          <EmptyState icon={Radio} title="Nenhum alerta ainda" />
         ) : (
           <div className="divide-y divide-white/5">
             {recent.map((a) => (
@@ -221,9 +229,9 @@ export function AlertsPanel({ widgetUrl, qrUrl, remoteBase, paused, initial, rec
                 <button
                   type="button"
                   onClick={() => run("replay" + a.id, () => replayAlert(a.id))}
-                  className="flex-none rounded-lg border border-pixflow-cyan/40 px-3 py-1.5 text-xs text-pixflow-slate hover:border-pixflow-cyan hover:bg-pixflow-cyan/10"
+                  className="flex flex-none items-center gap-1 rounded-lg border border-pixflow-cyan/40 px-3 py-1.5 text-xs text-pixflow-slate hover:border-pixflow-cyan hover:bg-pixflow-cyan/10"
                 >
-                  🔁 Replay
+                  <RotateCcw size={13} /> Replay
                 </button>
               </div>
             ))}

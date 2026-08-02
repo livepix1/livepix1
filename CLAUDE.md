@@ -1,5 +1,32 @@
 # PixLive (repo: pixflow) — CLAUDE.md do projeto
 
+## Estado atual (2026-08-02, sessão 2 cont.) — Redesign visual do dashboard (sem copiar Agentop)
+
+Pedido do dono: elevar o polimento visual do dashboard usando o **Agentop
+como régua de qualidade** (ícones, riqueza de layout, UX) — sem copiar cores
+nem conteúdo, e **mantendo o tema escuro neon do PixLive** (decisão explícita:
+não migrar pro tema claro corporativo da LivePix, para não parecer cópia
+visual da concorrente).
+
+- **lucide-react instalado** — todos os emojis usados como ícone (🔔 ⏭ ⏸ 🗑 🎙
+  ⏺ ✓ ✕ 🎉 🚀 ↗, em 13 arquivos) foram substituídos por ícones SVG.
+- **`Sidebar.tsx` reformada**: itens agrupados em 6 seções (Painel,
+  Monetização, Modo autônomo, Financeiro, Integrações, Conta), cada item com
+  ícone num box (padrão inspirado no Agentop: `w-7 h-7 rounded-md` com fundo
+  `pixflow-cyan/15` no estado ativo), badge "Novo" em Enquetes.
+- **`EmptyState.tsx` novo** (`src/components/dashboard/`) — ícone + título +
+  dica opcional, substituindo os estados vazios que eram só texto cinza
+  (metas, campanhas, planos, enquetes, saques, alertas, moderação).
+- **`Card.tsx`** ganhou hover sutil (`hover:border-white/15`).
+
+Testado: `tsc`+`build` limpos, navegação real logado como
+`adrianorosa1@hotmail.com` em `/dashboard`, `/alertas`, `/enquetes`,
+`/moderacao` e na página pública do criador — sidebar com seções certas,
+nenhum emoji restante, zero erro de console. (Sem captura de tela nesta
+sessão — o Browser pane não estava renderizando frames pro screenshot, só
+inspeção via DOM/texto.)
+
+
 > Projeto ISOLADO. Nunca misturar com outros projetos da pasta Downloads.
 > Antes de qualquer op de banco/deploy, confirmar os IDs abaixo (os MCPs
 > Supabase/Vercel são GLOBAIS e podem apontar pro projeto errado).

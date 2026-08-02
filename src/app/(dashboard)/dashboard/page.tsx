@@ -3,11 +3,13 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
 import { getBalance } from "@/lib/finance";
 import { formatBRL, toNumber } from "@/lib/serialize";
+import { Receipt } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { CopyLink } from "@/components/dashboard/CopyLink";
+import { EmptyState } from "@/components/dashboard/EmptyState";
 
 export default async function DashboardHome() {
   const user = await requireUser();
@@ -36,7 +38,7 @@ export default async function DashboardHome() {
   return (
     <>
       <PageHeader
-        title={`Olá, ${user.name.split(" ")[0]} 👋`}
+        title={`Olá, ${user.name.split(" ")[0]}`}
         subtitle="Aqui está um resumo da sua conta."
       />
 
@@ -103,9 +105,7 @@ export default async function DashboardHome() {
           </Link>
         </div>
         {recent.length === 0 ? (
-          <p className="py-6 text-center text-sm text-white/40">
-            Nenhuma cobrança ainda.
-          </p>
+          <EmptyState icon={Receipt} title="Nenhuma cobrança ainda" />
         ) : (
           <div className="divide-y divide-white/5">
             {recent.map((c) => (

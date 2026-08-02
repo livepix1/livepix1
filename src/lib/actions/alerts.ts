@@ -69,7 +69,7 @@ export async function sendTestAlert(): Promise<ActionResult> {
     payerName: "PixLive",
     amount: 12.34,
     grossAmount: 12.34,
-    message: "Isso é um alerta de teste! Tudo funcionando. 🎉",
+    message: "Isso é um alerta de teste! Tudo funcionando.",
     flagged: false,
   };
   const event = await prisma.alertEvent.create({

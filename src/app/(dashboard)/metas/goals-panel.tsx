@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Target } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Field, Input } from "@/components/ui/Input";
+import { EmptyState } from "@/components/dashboard/EmptyState";
 import { formatBRL } from "@/lib/serialize";
 import { createGoal, toggleGoal, deleteGoal } from "@/lib/actions/goals";
 
@@ -82,7 +84,7 @@ export function GoalsPanel({ goals }: { goals: GoalRow[] }) {
 
       <div className="grid gap-4">
         {goals.length === 0 ? (
-          <p className="py-6 text-center text-sm text-white/40">Nenhuma meta ainda.</p>
+          <EmptyState icon={Target} title="Nenhuma meta ainda" hint="Crie a primeira acima." />
         ) : (
           goals.map((g) => {
             const pct = Math.min(100, Math.round((g.currentAmount / g.targetAmount) * 100));

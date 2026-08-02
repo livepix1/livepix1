@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Repeat } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Field, Input, Textarea } from "@/components/ui/Input";
+import { EmptyState } from "@/components/dashboard/EmptyState";
 import { formatBRL } from "@/lib/serialize";
 import { createPlan, togglePlan, deletePlan } from "@/lib/actions/plans";
 
@@ -96,7 +98,7 @@ export function PlansPanel({ plans }: { plans: PlanRow[] }) {
 
       <div className="grid gap-4">
         {plans.length === 0 ? (
-          <p className="py-6 text-center text-sm text-white/40">Nenhum plano ainda.</p>
+          <EmptyState icon={Repeat} title="Nenhum plano ainda" hint="Crie o primeiro acima." />
         ) : (
           plans.map((p) => (
             <div

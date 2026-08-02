@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Check } from "lucide-react";
 import { voteInPoll } from "@/lib/actions/polls";
 
 export interface PublicPollOption {
@@ -71,9 +72,15 @@ function PollCard({ poll }: { poll: PublicPoll }) {
             return (
               <div key={o.id}>
                 <div className="mb-1 flex justify-between text-xs">
-                  <span className={isChoice ? "text-pixflow-cyan" : "text-white/60"}>
+                  <span
+                    className={
+                      isChoice
+                        ? "flex items-center gap-1 text-pixflow-cyan"
+                        : "text-white/60"
+                    }
+                  >
                     {o.label}
-                    {isChoice ? " ✓" : ""}
+                    {isChoice && <Check size={12} />}
                   </span>
                   <span className="text-white/50">{pct}%</span>
                 </div>

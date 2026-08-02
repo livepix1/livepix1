@@ -1,5 +1,6 @@
 "use client";
 
+import { ExternalLink } from "lucide-react";
 import { formatBRL } from "@/lib/serialize";
 
 export interface LedgerRow {
@@ -115,9 +116,9 @@ export function ExtratoTable({ rows }: { rows: LedgerRow[] }) {
                         href={r.receiptUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-xs text-pixflow-cyan hover:text-pixflow-magenta"
+                        className="inline-flex items-center gap-1 text-xs text-pixflow-cyan hover:text-pixflow-magenta"
                       >
-                        Ver comprovante ↗
+                        Ver comprovante <ExternalLink size={12} />
                       </a>
                     ) : (
                       <span className="text-xs text-white/30">—</span>

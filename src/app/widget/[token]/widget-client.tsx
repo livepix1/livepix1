@@ -9,6 +9,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { VolumeX } from "lucide-react";
 
 interface AlertPayload {
   payerName?: string;
@@ -220,9 +221,9 @@ export function WidgetClient({ token }: { token: string }) {
         <button
           type="button"
           onClick={unlockAudio}
-          className="fixed bottom-4 right-4 rounded-xl bg-black/80 px-4 py-2 text-sm text-white"
+          className="fixed bottom-4 right-4 flex items-center gap-1.5 rounded-xl bg-black/80 px-4 py-2 text-sm text-white"
         >
-          🔇 Clique para ativar o som
+          <VolumeX size={15} /> Clique para ativar o som
         </button>
       )}
 

@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { Check } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { SiteHeader } from "@/components/landing/SiteHeader";
 import { SiteFooter } from "@/components/landing/SiteFooter";
@@ -266,8 +267,8 @@ export default function LandingPage() {
                   key={b}
                   className="flex items-center gap-3 rounded-xl border border-white/10 bg-pixflow-dark px-4 py-3"
                 >
-                  <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-pixflow-cyan/15 font-display text-sm text-pixflow-cyan">
-                    ✓
+                  <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-pixflow-cyan/15 text-pixflow-cyan">
+                    <Check size={14} />
                   </span>
                   <span className="text-sm text-pixflow-slate/80">{b}</span>
                 </li>

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import { Mic, Circle, PartyPopper } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Field, Input, Textarea } from "@/components/ui/Input";
 import { formatBRL } from "@/lib/serialize";
@@ -197,7 +198,9 @@ export function DonateForm({
   if (paid) {
     return (
       <div className="py-6 text-center">
-        <p className="font-display text-2xl text-emerald-400">Pagamento confirmado! 🎉</p>
+        <p className="flex items-center justify-center gap-2 font-display text-2xl text-emerald-400">
+          <PartyPopper size={22} /> Pagamento confirmado!
+        </p>
         <p className="mt-2 text-sm text-white/60">
           Sua mensagem vai aparecer na tela de {creatorName}.
         </p>
@@ -302,18 +305,18 @@ export function DonateForm({
           <button
             type="button"
             onClick={startRecording}
-            className="w-full rounded-xl border border-white/10 px-4 py-3 text-sm text-pixflow-slate/80 hover:border-pixflow-cyan/40"
+            className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 px-4 py-3 text-sm text-pixflow-slate/80 hover:border-pixflow-cyan/40"
           >
-            🎙 Gravar mensagem de voz
+            <Mic size={15} /> Gravar mensagem de voz
           </button>
         )}
         {recordingState === "recording" && (
           <button
             type="button"
             onClick={stopRecording}
-            className="w-full animate-pulse rounded-xl border border-pixflow-magenta/50 bg-pixflow-magenta/10 px-4 py-3 text-sm text-pixflow-magenta"
+            className="flex w-full animate-pulse items-center justify-center gap-2 rounded-xl border border-pixflow-magenta/50 bg-pixflow-magenta/10 px-4 py-3 text-sm text-pixflow-magenta"
           >
-            ⏺ Gravando... toque para parar (máx. 15s)
+            <Circle size={12} className="fill-current" /> Gravando... toque para parar (máx. 15s)
           </button>
         )}
         {recordingState === "recorded" && recordedUrl && (

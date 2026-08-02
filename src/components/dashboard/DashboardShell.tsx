@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Menu, Bell } from "lucide-react";
 import { SidebarNav } from "./Sidebar";
 import { cn } from "@/lib/cn";
 
@@ -49,22 +50,20 @@ export function DashboardShell({ user, children }: DashboardShellProps) {
             aria-label="Abrir menu"
             onClick={() => setDrawer(true)}
             className={cn(
-              "flex h-10 w-10 flex-col items-center justify-center gap-1.5 lg:hidden"
+              "flex h-10 w-10 items-center justify-center text-pixflow-slate/70 hover:text-pixflow-slate lg:hidden"
             )}
           >
-            <span className="h-0.5 w-6 bg-pixflow-slate" />
-            <span className="h-0.5 w-6 bg-pixflow-slate" />
-            <span className="h-0.5 w-6 bg-pixflow-slate" />
+            <Menu size={20} strokeWidth={2} />
           </button>
 
           <div className="flex flex-1 items-center justify-end gap-4">
             <button
               type="button"
               aria-label="Notificações"
-              className="relative rounded-lg px-2 py-1 text-sm text-pixflow-slate/60 hover:text-pixflow-slate"
+              className="relative flex h-9 w-9 items-center justify-center rounded-lg text-pixflow-slate/60 transition-colors hover:bg-white/5 hover:text-pixflow-slate"
             >
-              Avisos
-              <span className="absolute right-1 top-0 h-2 w-2 rounded-full bg-pixflow-magenta" />
+              <Bell size={18} strokeWidth={2} />
+              <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-pixflow-magenta" />
             </button>
 
             <div className="flex items-center gap-3">

@@ -1,3 +1,4 @@
+import { Wallet } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
 import { getBalance } from "@/lib/finance";
@@ -5,6 +6,7 @@ import { formatBRL, toNumber } from "@/lib/serialize";
 import { Card } from "@/components/ui/Card";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
+import { EmptyState } from "@/components/dashboard/EmptyState";
 import { WithdrawalForm } from "./withdrawal-form";
 
 export default async function SaquesPage() {
@@ -33,9 +35,7 @@ export default async function SaquesPage() {
         <Card>
           <p className="mb-4 font-medium text-pixflow-slate">Histórico de saques</p>
           {withdrawals.length === 0 ? (
-            <p className="py-10 text-center text-sm text-white/40">
-              Você ainda não fez saques.
-            </p>
+            <EmptyState icon={Wallet} title="Você ainda não fez saques" />
           ) : (
             <div className="divide-y divide-white/5">
               {withdrawals.map((w) => (

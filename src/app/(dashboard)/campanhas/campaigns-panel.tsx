@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Megaphone } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Field, Input, Textarea } from "@/components/ui/Input";
+import { EmptyState } from "@/components/dashboard/EmptyState";
 import { formatBRL } from "@/lib/serialize";
 import { createCampaign, setCampaignStatus, deleteCampaign } from "@/lib/actions/campaigns";
 
@@ -112,7 +114,7 @@ export function CampaignsPanel({
 
       <div className="grid gap-4">
         {campaigns.length === 0 ? (
-          <p className="py-6 text-center text-sm text-white/40">Nenhuma campanha ainda.</p>
+          <EmptyState icon={Megaphone} title="Nenhuma campanha ainda" hint="Crie a primeira acima." />
         ) : (
           campaigns.map((c) => {
             const pct = c.targetAmount

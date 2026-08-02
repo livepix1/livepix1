@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Field, Input } from "@/components/ui/Input";
+import { EmptyState } from "@/components/dashboard/EmptyState";
 import { createPoll, setPollStatus, deletePoll } from "@/lib/actions/polls";
 
 export interface PollRow {
@@ -77,7 +79,7 @@ export function PollsPanel({ polls }: { polls: PollRow[] }) {
 
       <div className="grid gap-4">
         {polls.length === 0 ? (
-          <p className="py-6 text-center text-sm text-white/40">Nenhuma enquete ainda.</p>
+          <EmptyState icon={BarChart3} title="Nenhuma enquete ainda" hint="Crie a primeira acima." />
         ) : (
           polls.map((p) => {
             const total = p.options.reduce((sum, o) => sum + o.voteCount, 0);

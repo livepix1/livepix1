@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Check, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Field, Input } from "@/components/ui/Input";
 import { formatBRL } from "@/lib/serialize";
@@ -61,7 +62,7 @@ function PlanCard({ plan }: { plan: PublicPlan }) {
         <ul className="mt-3 grid gap-1">
           {plan.rewards.map((r, i) => (
             <li key={i} className="flex items-center gap-2 text-sm text-white/70">
-              <span className="text-pixflow-cyan">✓</span> {r}
+              <Check size={14} className="flex-none text-pixflow-cyan" /> {r}
             </li>
           ))}
         </ul>
@@ -72,9 +73,9 @@ function PlanCard({ plan }: { plan: PublicPlan }) {
           href={paymentUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="mt-4 block w-full rounded-xl bg-pixflow-cyan px-4 py-2.5 text-center text-sm font-semibold text-pixflow-darker hover:bg-pixflow-magenta hover:text-white"
+          className="mt-4 flex w-full items-center justify-center gap-1.5 rounded-xl bg-pixflow-cyan px-4 py-2.5 text-center text-sm font-semibold text-pixflow-darker hover:bg-pixflow-magenta hover:text-white"
         >
-          Pagar assinatura ↗
+          Pagar assinatura <ExternalLink size={14} />
         </a>
       ) : open ? (
         <form onSubmit={onSubmit} className="mt-4 grid gap-3">

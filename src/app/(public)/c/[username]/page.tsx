@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { notFound } from "next/navigation";
+import { Trophy } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { toNumber, formatBRL } from "@/lib/serialize";
 import { Logo } from "@/components/Logo";
@@ -129,9 +130,9 @@ export default async function CreatorPage({
                 Maiores apoiadores (30 dias)
               </p>
               {topDonors.length === 0 ? (
-                <p className="py-4 text-center text-sm text-white/40">
-                  Seja o primeiro a apoiar! 🚀
-                </p>
+                <div className="flex items-center justify-center gap-2 py-4 text-sm text-white/40">
+                  <Trophy size={16} /> Seja o primeiro a apoiar!
+                </div>
               ) : (
                 <ol className="grid gap-2">
                   {topDonors.map((d, i) => (
