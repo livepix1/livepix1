@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/Card";
 import { DonateForm } from "./donate-form";
 import { GoalsLive } from "./goals-live";
 import { PlansSection, type PublicPlan } from "./plans-section";
+import { PollsSection, type PublicPoll } from "./polls-section";
 
 export default async function CreatorPage({
   params,
@@ -21,7 +22,7 @@ export default async function CreatorPage({
   const profile = user.creatorProfile;
 
   const thirtyDaysAgo = new Date(Date.now() - 30 * 864e5);
-  const [goals, topDonors, plans] = await Promise.all([
+  const [goals, topDonors, plans, polls] = await Promise.all([
     prisma.goal.findMany({
       where: { creatorId: user.id, isActive: true },
       orderBy: { createdAt: "desc" },
@@ -38,6 +39,11 @@ export default async function CreatorPage({
       where: { creatorId: user.id, isActive: true },
       orderBy: { price: "asc" },
     }),
+    prisma.poll.findMany({
+      where: { creatorId: user.id, isActive: true },
+      orderBy: { createdAt: "desc" },
+      include: { options: true },
+    }),
   ]);
 
   const publicPlans: PublicPlan[] = plans.map((p) => ({
@@ -48,6 +54,12 @@ export default async function CreatorPage({
     rewards: Array.isArray(p.rewards) ? (p.rewards as string[]) : [],
     hasDiscordReward: Boolean(p.discordRoleId && p.discordGuildId),
     hasTelegramReward: Boolean(p.telegramGroupId),
+  }));
+
+  const publicPolls: PublicPoll[] = polls.map((p) => ({
+    id: p.id,
+    question: p.question,
+    options: p.options.map((o) => ({ id: o.id, label: o.label, voteCount: o.voteCount })),
   }));
 
   return (
@@ -144,6 +156,13 @@ export default async function CreatorPage({
               <Card>
                 <p className="mb-4 font-medium text-pixflow-slate">Assinaturas</p>
                 <PlansSection plans={publicPlans} />
+              </Card>
+            )}
+
+            {publicPolls.length > 0 && (
+              <Card>
+                <p className="mb-4 font-medium text-pixflow-slate">Enquetes</p>
+                <PollsSection polls={publicPolls} />
               </Card>
             )}
           </div>

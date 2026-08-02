@@ -52,6 +52,7 @@ model User {
   apiKeys          ApiKey[]
   webhookEndpoints WebhookEndpoint[]
   socialConnections SocialConnection[]
+  polls            Poll[]
 }
 
 model Account {
@@ -253,6 +254,32 @@ model Campaign {
   donations Donation[]
 
   @@unique([creatorId, slug])
+}
+
+// Enquetes (F10b) — baixa prioridade, mas confirmada na paridade com a LivePix.
+model Poll {
+  id        String    @id @default(cuid())
+  creatorId String
+  question  String
+  isActive  Boolean   @default(true)
+  endsAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  creator User         @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  options PollOption[]
+
+  @@index([creatorId, isActive])
+}
+
+model PollOption {
+  id        String @id @default(cuid())
+  pollId    String
+  label     String
+  voteCount Int    @default(0)
+
+  poll Poll @relation(fields: [pollId], references: [id], onDelete: Cascade)
+
+  @@index([pollId])
 }
 
 // Plano de assinatura criado pelo criador (membership).
