@@ -6,6 +6,9 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { AlertsPanel, type RecentAlert } from "./alerts-panel";
+import { VariationsPanel, type VariationRow, type TemplateRow } from "./variations-panel";
+import { listTemplates } from "@/lib/actions/alert-templates";
+import { listAvailableVoices } from "@/lib/actions/tts";
 
 export default async function AlertasPage() {
   const user = await requireUser();
@@ -31,14 +34,50 @@ export default async function AlertasPage() {
     );
   }
 
-  const [config, events] = await Promise.all([
+  const [config, events, variationRows, templateRows, voices] = await Promise.all([
     prisma.alertConfig.findUnique({ where: { creatorId: user.id } }),
     prisma.alertEvent.findMany({
       where: { creatorId: user.id },
       orderBy: { createdAt: "desc" },
       take: 15,
     }),
+    prisma.alertVariation.findMany({
+      where: { creatorId: user.id },
+      orderBy: { priority: "desc" },
+    }),
+    listTemplates(),
+    listAvailableVoices(),
   ]);
+
+  const variations: VariationRow[] = variationRows.map((v) => ({
+    id: v.id,
+    name: v.name,
+    isDefault: v.isDefault,
+    priority: v.priority,
+    minAmount: v.minAmount ? toNumber(v.minAmount) : null,
+    maxAmount: v.maxAmount ? toNumber(v.maxAmount) : null,
+    keyword: v.keyword,
+    soundUrl: v.soundUrl,
+    gifUrl: v.gifUrl,
+    durationMs: v.durationMs,
+    ttsEnabled: v.ttsEnabled,
+    ttsVoice: v.ttsVoice,
+    ttsProviderVoiceId: v.ttsProviderVoiceId,
+    ttsVolume: v.ttsVolume,
+    soundVolume: v.soundVolume,
+    readName: v.readName,
+    readAmount: v.readAmount,
+  }));
+
+  const templates: TemplateRow[] = templateRows.map((t) => ({
+    id: t.id,
+    name: t.name,
+    previewUrl: t.previewUrl,
+    soundUrl: t.soundUrl,
+    gifUrl: t.gifUrl,
+    durationMs: t.durationMs,
+    isOfficial: t.isOfficial,
+  }));
 
   const base = process.env.NEXTAUTH_URL || "";
   const widgetUrl = `${base}/widget/${profile.widgetToken}`;
@@ -69,7 +108,8 @@ export default async function AlertasPage() {
         title="Alertas"
         subtitle="Configure o widget que mostra as doações na sua live."
       />
-      <div className="max-w-3xl">
+      <div className="grid max-w-3xl gap-6">
+        <VariationsPanel variations={variations} templates={templates} voices={voices} />
         <AlertsPanel
           widgetUrl={widgetUrl}
           qrUrl={qrUrl}

@@ -154,9 +154,44 @@ X-PixLive-Signature (HMAC-SHA256), eventos: novo pagamento / novo alerta.
 - Regenerar token deve invalidar URLs antigas do overlay.
 
 ## Status de execução (atualizado pelo Claude Code)
-- **P0 em andamento** (2026-08-02): variações de alerta, templates, TTS
-  avançado, upload de áudio próprio. Ver tasks no momento da sessão.
-- **Bloqueio maior do sistema, fora do P0-P4**: `ASAAS_API_KEY` vazia no
-  `.env` — sem ela, nenhum PIX real é gerado, nenhuma assinatura é cobrada,
-  nenhum saque sai de verdade. Isso não é resolvido escrevendo código; é uma
-  credencial que só o dono consegue (conta Asaas, sandbox é grátis).
+
+### ✅ P0 CONCLUÍDO (2026-08-02)
+Construído por 3 subagentes em paralelo (worktrees isolados, sem tocar no
+banco ao mesmo tempo — schema migrado por mim antes de disparar os agentes)
++ integração da UI feita depois:
+
+- **Variações de alerta** (`AlertVariation`) — cada uma com critério (faixa
+  de valor mín/máx, palavra-chave na mensagem), prioridade, e uma sempre
+  marcada "Padrão" (fallback). Motor de match em
+  `src/lib/donation-alerts.ts` (`pickAlertVariation`) — **testado com 3
+  cenários reais contra o banco**: valor bate critério, palavra-chave bate
+  com prioridade maior, nenhum critério bate → cai no padrão. Os 3 bateram
+  certo.
+- **Templates** (`AlertTemplate`) — galeria oficial + "meus templates",
+  aplicar num clique (copia som/gif/duração pra uma variação).
+- **TTS avançado** — provider ElevenLabs (`src/lib/tts-providers.ts`,
+  `/api/tts/synthesize`), INERTE sem `ELEVENLABS_API_KEY`. Nota: já existia
+  um segundo provider (`/api/tts`, OpenAI) de uma iteração anterior — o
+  widget agora prioriza ElevenLabs (`ttsProviderVoiceId`) e cai pro Web
+  Speech API do navegador se não tiver; o provider OpenAI antigo ficou
+  órfão, sem uso — decidir no futuro se remove ou também liga.
+- **Upload de áudio próprio** pro som do alerta — grava 5s no painel,
+  sobe pro Supabase Storage (bucket `alert-sounds`, mesmo padrão INERTE do
+  resto do projeto — precisa `SUPABASE_SERVICE_ROLE_KEY` configurada e o
+  bucket criado manualmente no Supabase pra funcionar de verdade).
+- **Widget (`widget-client.tsx`)** atualizado pra usar os campos por
+  variação (som/gif/duração/volume/voz) com prioridade sobre a config
+  legada — compatibilidade retroativa garantida (criador sem nenhuma
+  variação continua funcionando exatamente como antes).
+
+Testado: `tsc`+`build` limpos, criação de variação real via navegador
+(persistiu no banco), motor de match validado com dados reais.
+
+### Bloqueio maior do sistema, fora do P0-P4
+`ASAAS_API_KEY` vazia no `.env` — sem ela, nenhum PIX real é gerado, nenhuma
+assinatura é cobrada, nenhum saque sai de verdade. Isso não é resolvido
+escrevendo código; é uma credencial que só o dono consegue (conta Asaas,
+sandbox é grátis). Aguardando o dono passar a chave.
+
+### Próximo: P1 (widgets faltantes: Maratona, Ranking, Vídeo, Música,
+Últimos Incentivos, Enquete ao vivo) — ainda não iniciado.
