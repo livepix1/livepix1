@@ -186,10 +186,6 @@ model Donation {
   createdAt        DateTime  @default(now())
   paidAt           DateTime?
 
-  // Mensagem de áudio/vídeo do doador (F10b) — moderação reusa moderationStatus.
-  mediaUrl  String?
-  mediaType String? // AUDIO, VIDEO
-
   creator  User      @relation(fields: [creatorId], references: [id], onDelete: Cascade)
   goal     Goal?     @relation(fields: [goalId], references: [id], onDelete: SetNull)
   campaign Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
