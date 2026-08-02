@@ -53,6 +53,8 @@ model User {
   webhookEndpoints WebhookEndpoint[]
   socialConnections SocialConnection[]
   polls            Poll[]
+  alertVariations  AlertVariation[]
+  alertTemplates   AlertTemplate[]
 }
 
 model Account {
@@ -226,6 +228,59 @@ model AlertEvent {
   creator User @relation(fields: [creatorId], references: [id], onDelete: Cascade)
 
   @@index([creatorId, displayedAt])
+}
+
+// Variações de alerta (P0 do roadmap) — cada uma dispara por critério
+// (faixa de valor e/ou palavra-chave na mensagem). A de maior `priority` que
+// bater primeiro. `isDefault` é o fallback quando nenhuma outra bate — sempre
+// existe uma por criador (criada junto com o AlertConfig original).
+model AlertVariation {
+  id         String   @id @default(cuid())
+  creatorId  String
+  name       String
+  isDefault  Boolean  @default(false)
+  priority   Int      @default(0) // maior = checada primeiro
+  minAmount  Decimal?
+  maxAmount  Decimal?
+  keyword    String? // case-insensitive, substring na mensagem
+
+  soundUrl    String?
+  gifUrl      String?
+  durationMs  Int?     // null = usa o valor do AlertConfig
+  ttsEnabled  Boolean?
+  ttsVoice    String? // nome da voz do Web Speech API (fallback sem provider)
+  ttsProviderVoiceId String? // id de voz ElevenLabs — INERTE sem ELEVENLABS_API_KEY
+  ttsVolume   Int?     // 0-100
+  soundVolume Int?     // 0-100
+  readName    Boolean  @default(true)
+  readAmount  Boolean  @default(true)
+
+  templateId String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  creator  User           @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  template AlertTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+
+  @@index([creatorId, priority])
+}
+
+// Galeria de templates de alerta — oficiais (creatorId null) ou "meus templates".
+model AlertTemplate {
+  id         String   @id @default(cuid())
+  creatorId  String? // null = oficial da galeria, visível pra todos
+  name       String
+  previewUrl String?
+  soundUrl   String?
+  gifUrl     String?
+  durationMs Int      @default(8000)
+  isOfficial Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  creator    User?            @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  variations AlertVariation[]
+
+  @@index([creatorId])
 }
 
 model Goal {
