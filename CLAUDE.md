@@ -45,6 +45,44 @@ Workflow local recomendado pra evitar isso: depois de criar um arquivo `"use cli
 novo, mate o processo na porta 3000/3001, `rm -rf .next` e reinicie o dev server ANTES
 de testar a rota que usa esse componente.
 
+## Estado atual (2026-08-02) — Enquetes + mídia do doador + confirmação de saque por e-mail
+
+Construídos em paralelo por 3 subagentes (cada um em worktree isolado, sem
+tocar no banco compartilhado) e depois mesclados manualmente por mim
+(cuidado extra: cada agente recriou os mesmos campos de schema que eu já
+tinha migrado antes de disparar os agentes, porque não commitei o
+schema.prisma a tempo — corrigi duplicação de `Donation.mediaUrl/mediaType`
+gerada pelo merge automático do git antes de compilar).
+
+- **Enquetes (Polls)** — `Poll`/`PollOption`, CRUD em `dashboard/enquetes`,
+  votação pública sem login na página do criador. Testado de ponta a ponta:
+  criei enquete real, votei como visitante, voto bateu no banco.
+- **Mensagem de áudio/vídeo do doador** — gravação via MediaRecorder no form
+  público, upload INERTE (`src/lib/media-upload.ts`, precisa
+  `SUPABASE_SERVICE_ROLE_KEY` + bucket `donation-media` criado manualmente no
+  Supabase Storage — nada disso existe ainda). Doação com mídia entra em
+  `moderationStatus: PENDING_VOICE_REVIEW` e só dispara alerta/TTS depois de
+  aprovação manual do criador em `/moderacao` (sem Whisper configurado, é
+  100% manual por design).
+- **Confirmação de saque por e-mail** — `Withdrawal.status: AWAITING_CONFIRMATION`
+  até o link mágico (`/confirmar-saque/[token]`, 1h de validade) ser clicado;
+  só aí o ledger `PAYOUT` é postado (nunca antes). Sem `RESEND_API_KEY`
+  configurada, o link aparece na tela (modo dev) em vez de ser enviado.
+  **Testado de ponta a ponta com dinheiro fictício**: solicitei saque, confirmei
+  o link, virou `PENDING` e o ledger só postou depois da confirmação; tentei
+  confirmar o mesmo token 2x — segunda vez foi rejeitada (idempotência ok).
+
+Conta real do dono criada nesta sessão: `adrianorosa1@hotmail.com` — senha
+inicial fraca (`12345`, abaixo do mínimo de 8 caracteres que o próprio signup
+exige), trocar assim que possível.
+
+⚠️ **Gotcha de infra desta sessão**: a porta 3000 pode estar ocupada por
+OUTRO projeto do mesmo Windows (ex.: Vite do FreteCompare/YLIP rodando em
+`Downloads\fretecompare-deploy\frontend`) — sempre confirme com
+`netstat -ano | grep ":3000"` + identificar o processo antes de testar, ou
+use uma porta alternativa (`PORT=3100 npm run start`) em vez de matar o
+processo alheio.
+
 ## Estado atual (2026-08-01, sessão 2) — F2 (resto) + F7 + F4b + F8 + F10 completas
 
 Depois da F6, o dono pediu paridade completa com a LivePix ("super SaaS", sem
