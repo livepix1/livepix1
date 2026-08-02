@@ -1,5 +1,6 @@
 "use server";
 
+import { randomBytes } from "crypto";
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@prisma/client";
 import type { ZodError } from "zod";
@@ -14,9 +15,13 @@ import { computeWithdrawalFee, getBalance } from "@/lib/finance";
 import { postEntry } from "@/lib/ledger";
 import { decrypt } from "@/lib/crypto";
 import { verifyTotpToken } from "@/lib/totp";
+import { sendEmail, isEmailConfigured } from "@/lib/email";
+
+// Validade do link de confirmação de saque por e-mail.
+const CONFIRM_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hora
 
 export type ActionResult =
-  | { ok: true; message?: string }
+  | { ok: true; message?: string; confirmUrl?: string }
   | { ok: false; error: string; fieldErrors?: Record<string, string> };
 
 function collectFieldErrors(error: ZodError): Record<string, string> {
@@ -70,7 +75,11 @@ export async function saveLink(input: unknown): Promise<ActionResult> {
   return { ok: true, message: "Link salvo com sucesso" };
 }
 
-/** Solicita um saque. NÃO move dinheiro — apenas registra a intenção (status PENDING). */
+/**
+ * Solicita um saque. NÃO move dinheiro — cria o registro em AWAITING_CONFIRMATION e
+ * manda o link de confirmação por e-mail (F7). O ledger só é reservado depois que
+ * confirmWithdrawal for chamado (link clicado) — nunca aqui na criação.
+ */
 export async function requestWithdrawal(input: unknown): Promise<ActionResult> {
   const session = await requireSession();
   const userId = session.user.id;
@@ -116,6 +125,10 @@ export async function requestWithdrawal(input: unknown): Promise<ActionResult> {
 
   const { fee, net } = computeWithdrawalFee(amount);
 
+  // Confirmação por e-mail (F7): cria o saque AGUARDANDO confirmação — o ledger só
+  // é postado depois que o link mágico for clicado (ver confirmWithdrawal abaixo).
+  const confirmToken = randomBytes(24).toString("hex");
+
   const withdrawal = await prisma.withdrawal.create({
     data: {
       userId,
@@ -127,24 +140,88 @@ export async function requestWithdrawal(input: unknown): Promise<ActionResult> {
       destinationBank: parsed.data.destinationBank?.trim() || null,
       destinationAgency: parsed.data.destinationAgency?.trim() || null,
       destinationAccount: parsed.data.destinationAccount?.trim() || null,
-      status: "PENDING",
+      status: "AWAITING_CONFIRMATION",
+      confirmToken,
     },
   });
 
+  const confirmUrl = `${process.env.NEXTAUTH_URL ?? ""}/confirmar-saque/${confirmToken}`;
+
+  const sent = user?.email
+    ? await sendEmail({
+        to: user.email,
+        subject: "Confirme seu saque",
+        html: `<p>Você solicitou um saque (nº ${withdrawal.id}) de ${net.toFixed(2)} (líquido). Clique no link abaixo para confirmar:</p><p><a href="${confirmUrl}">${confirmUrl}</a></p><p>Se não foi você, ignore este e-mail — o saque não será processado sem confirmação.</p>`,
+      })
+    : false;
+
+  revalidatePath("/saques");
+  revalidatePath("/dashboard");
+
+  if (sent) {
+    return { ok: true, message: "Verifique seu e-mail para confirmar o saque" };
+  }
+
+  // Sem provider de e-mail configurado (ou envio falhou): nunca esconder o link do
+  // usuário — é a única forma dele confirmar o saque nesse ambiente.
+  return {
+    ok: true,
+    message: isEmailConfigured()
+      ? "Saque solicitado, mas o e-mail de confirmação não pôde ser enviado"
+      : "Saque solicitado (e-mail não configurado neste ambiente)",
+    confirmUrl,
+  };
+}
+
+/**
+ * Confirma um saque pelo link mágico enviado por e-mail (sem exigir login —
+ * o próprio token autentica a ação, mesmo padrão de cancelSubscriptionByToken).
+ * Só AQUI o valor é reservado no ledger — nunca na criação do saque.
+ */
+export async function confirmWithdrawal(
+  token: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const withdrawal = await prisma.withdrawal.findUnique({
+    where: { confirmToken: token },
+  });
+  if (!withdrawal) {
+    return { ok: false, error: "Link de confirmação inválido" };
+  }
+
+  if (withdrawal.status !== "AWAITING_CONFIRMATION") {
+    // Idempotência: segunda tentativa com o mesmo token nunca reprocessa o ledger.
+    return { ok: false, error: "Este saque já foi confirmado ou processado" };
+  }
+
+  const ageMs = Date.now() - withdrawal.createdAt.getTime();
+  if (ageMs > CONFIRM_TOKEN_TTL_MS) {
+    return { ok: false, error: "Link de confirmação expirado. Solicite o saque novamente." };
+  }
+
+  // Update condicional (status ainda AWAITING_CONFIRMATION) — guarda extra contra
+  // corrida de duas requisições com o mesmo token processando ao mesmo tempo.
+  const claim = await prisma.withdrawal.updateMany({
+    where: { id: withdrawal.id, status: "AWAITING_CONFIRMATION" },
+    data: { status: "PENDING", confirmedAt: new Date() },
+  });
+  if (claim.count === 0) {
+    return { ok: false, error: "Este saque já foi confirmado ou processado" };
+  }
+
   // Ledger: reserva o valor (débito) — idempotente por withdrawal.id.
   await postEntry({
-    userId,
+    userId: withdrawal.userId,
     type: "PAYOUT",
-    amount: -amount,
+    amount: -withdrawal.amount.toNumber(),
     refType: "Withdrawal",
     refId: withdrawal.id,
     providerEventId: `withdrawal:${withdrawal.id}`,
-    description: "Saque solicitado",
+    description: "Saque confirmado por e-mail",
   });
 
   revalidatePath("/saques");
   revalidatePath("/dashboard");
-  return { ok: true, message: "Saque solicitado" };
+  return { ok: true };
 }
 
 /** Atualiza o perfil do usuário logado. */

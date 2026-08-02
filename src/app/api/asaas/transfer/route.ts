@@ -34,6 +34,12 @@ export async function POST(req: Request) {
   if (!withdrawal) {
     return NextResponse.json({ error: "Saque não encontrado" }, { status: 404 });
   }
+  if (withdrawal.status === "AWAITING_CONFIRMATION") {
+    return NextResponse.json(
+      { error: "Confirme o saque pelo e-mail antes de processá-lo" },
+      { status: 409 }
+    );
+  }
   if (withdrawal.status !== "PENDING") {
     return NextResponse.json(
       { error: "Este saque já foi processado" },

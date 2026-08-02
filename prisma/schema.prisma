@@ -132,10 +132,15 @@ model Withdrawal {
   destinationBank    String?
   destinationAgency  String?
   destinationAccount String?
-  status             String    @default("PENDING") // PENDING, PROCESSING, COMPLETED, FAILED
+  status             String    @default("PENDING") // AWAITING_CONFIRMATION, PENDING, PROCESSING, COMPLETED, FAILED
   asaasTransferId    String?
   createdAt          DateTime  @default(now())
   completedAt        DateTime?
+
+  // Confirmação por e-mail (F7) — link mágico enviado ao criar o saque.
+  // Sem ele, o saque fica AWAITING_CONFIRMATION e nunca é postado no ledger.
+  confirmToken String?   @unique
+  confirmedAt  DateTime?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
