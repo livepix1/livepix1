@@ -19,6 +19,7 @@ export function WithdrawalForm({
   const [destinationType, setDestinationType] = useState<"PIX" | "BANK">("PIX");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [message, setMessage] = useState<string | null>(null);
+  const [confirmUrl, setConfirmUrl] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -29,6 +30,7 @@ export function WithdrawalForm({
     e.preventDefault();
     setErrors({});
     setMessage(null);
+    setConfirmUrl(null);
     setFormError(null);
 
     const form = new FormData(e.currentTarget);
@@ -63,6 +65,7 @@ export function WithdrawalForm({
       return;
     }
     setMessage(res.message ?? "Saque solicitado");
+    setConfirmUrl(res.confirmUrl ?? null);
     setAmount("");
   }
 
@@ -70,7 +73,15 @@ export function WithdrawalForm({
     <form onSubmit={onSubmit} className="grid gap-5">
       {message && (
         <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-400">
-          {message}. Ele entra como pendente até ser processado.
+          <p>{message}.</p>
+          {confirmUrl && (
+            <p className="mt-2">
+              (modo dev, sem e-mail configurado){" "}
+              <a href={confirmUrl} className="underline hover:text-emerald-300">
+                Confirmar agora
+              </a>
+            </p>
+          )}
         </div>
       )}
       {formError && (

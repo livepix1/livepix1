@@ -138,7 +138,8 @@ model Withdrawal {
   createdAt          DateTime  @default(now())
   completedAt        DateTime?
 
-  // Confirmação de saque por e-mail (F7)
+  // Confirmação por e-mail (F7) — link mágico enviado ao criar o saque.
+  // Sem ele, o saque fica AWAITING_CONFIRMATION e nunca é postado no ledger.
   confirmToken String?   @unique
   confirmedAt  DateTime?
 
