@@ -57,3 +57,55 @@ export async function uploadDonationMedia(
     return null; // best-effort — a doação já foi criada, só a mídia não anexou
   }
 }
+
+const ALERT_SOUND_BUCKET = "alert-sounds";
+
+/**
+ * Envia um áudio de alerta gravado/enviado pelo criador pro bucket
+ * "alert-sounds" do Supabase Storage via REST. Path inclui timestamp pra
+ * permitir múltiplos uploads do mesmo criador ao longo do tempo, sem
+ * sobrescrever sons antigos. Retorna a URL pública ou `null` se o storage
+ * não estiver configurado ou o upload falhar — nunca lança.
+ */
+export async function uploadAlertSound(
+  file: Blob,
+  creatorId: string
+): Promise<string | null> {
+  if (!isMediaUploadConfigured()) return null;
+
+  try {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string;
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY as string;
+    const ext = file.type.includes("mp3")
+      ? "mp3"
+      : file.type.includes("wav")
+        ? "wav"
+        : file.type.includes("ogg")
+          ? "ogg"
+          : file.type.includes("webm")
+            ? "webm"
+            : "bin";
+    const objectPath = `${creatorId}/${Date.now()}.${ext}`;
+
+    const res = await fetch(
+      `${supabaseUrl}/storage/v1/object/${ALERT_SOUND_BUCKET}/${objectPath}`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${serviceKey}`,
+          apikey: serviceKey,
+          "Content-Type": file.type || "application/octet-stream",
+          "x-upsert": "true",
+        },
+        body: Buffer.from(await file.arrayBuffer()),
+        cache: "no-store",
+      }
+    );
+
+    if (!res.ok) return null;
+
+    return `${supabaseUrl}/storage/v1/object/public/${ALERT_SOUND_BUCKET}/${objectPath}`;
+  } catch {
+    return null; // best-effort — nunca derruba o fluxo do painel
+  }
+}
