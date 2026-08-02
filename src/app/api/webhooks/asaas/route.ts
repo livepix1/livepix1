@@ -5,10 +5,8 @@ import { toNumber } from "@/lib/serialize";
 import { computePlatformFee } from "@/lib/fee";
 import { broadcastToWidget } from "@/lib/realtime";
 import { dispatchWebhook } from "@/lib/webhooks";
-
-/** Palavrões básicos PT-BR — mensagem flagrada não vai pro TTS/tela. */
-const BANNED_WORDS =
-  /\b(porra|caralho|puta|merda|foder|fodase|foda-se|buceta|cu|viado|arrombado|desgra[çc]a)\b/i;
+import { BANNED_WORDS } from "@/lib/moderation-words";
+import { createAndBroadcastDonationAlert } from "@/lib/donation-alerts";
 
 /** Processa doação paga: status + ledger (bruto - taxa) + meta + alerta + broadcast. */
 async function handleDonationPaid(donationId: string, providerId?: string | null) {
@@ -18,6 +16,12 @@ async function handleDonationPaid(donationId: string, providerId?: string | null
   const amount = toNumber(donation.amount);
   const { fee, net } = computePlatformFee(amount, donation.method === "CARD" ? "CARD" : "PIX");
   const flagged = donation.message ? BANNED_WORDS.test(donation.message) : false;
+  // Doação com áudio/vídeo anexado NUNCA entra em moderação automática —
+  // fica pendente de revisão manual do criador (sem Whisper API configurada,
+  // não dá pra moderar voz automaticamente). O alerta (e a mídia) só toca no
+  // widget depois que o criador aprovar (reviewVoiceMessage).
+  const hasMedia = donation.mediaType === "AUDIO" || donation.mediaType === "VIDEO";
+  const moderationStatus = hasMedia ? "PENDING_VOICE_REVIEW" : flagged ? "FLAGGED" : "AUTO_OK";
 
   const updated = await prisma.donation.update({
     where: { id: donation.id },
@@ -25,7 +29,7 @@ async function handleDonationPaid(donationId: string, providerId?: string | null
       status: "PAID",
       paidAt: new Date(),
       providerId: donation.providerId ?? providerId ?? null,
-      moderationStatus: flagged ? "FLAGGED" : "AUTO_OK",
+      moderationStatus,
     },
   });
 
@@ -70,43 +74,10 @@ async function handleDonationPaid(donationId: string, providerId?: string | null
   // Fila de alerta (fonte de verdade) + broadcast (empurrão, best-effort).
   // Doações abaixo do mínimo configurado pelo criador não geram alerta na tela
   // (mas o dinheiro/ledger acima já foi processado normalmente).
-  const alertConfig = await prisma.alertConfig.findUnique({
-    where: { creatorId: donation.creatorId },
-    select: { minAlertAmount: true },
-  });
-  const belowAlertMin = amount < toNumber(alertConfig?.minAlertAmount ?? 0);
-
-  const existing = await prisma.alertEvent.findFirst({
-    where: { donationId: donation.id },
-    select: { id: true },
-  });
-  if (!existing && !belowAlertMin) {
-    const alertPayload = {
-      payerName: updated.payerName,
-      amount: net,
-      grossAmount: amount,
-      message: flagged ? null : updated.message,
-      flagged,
-    };
-    const event = await prisma.alertEvent.create({
-      data: {
-        creatorId: donation.creatorId,
-        donationId: donation.id,
-        type: "DONATION",
-        payload: alertPayload,
-      },
-    });
-    const profile = await prisma.creatorProfile.findUnique({
-      where: { userId: donation.creatorId },
-      select: { widgetToken: true },
-    });
-    if (profile) {
-      await broadcastToWidget(profile.widgetToken, {
-        type: "alert",
-        eventId: event.id,
-        ...alertPayload,
-      });
-    }
+  // Doação com mídia pendente de revisão NUNCA dispara alerta aqui — só
+  // quando o criador aprovar manualmente (ver reviewVoiceMessage).
+  if (!hasMedia) {
+    await createAndBroadcastDonationAlert(updated, amount, net, flagged, true);
   }
 
   await dispatchWebhook(donation.creatorId, "payment.new", {

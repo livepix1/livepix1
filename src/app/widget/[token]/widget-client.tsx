@@ -16,6 +16,10 @@ interface AlertPayload {
   grossAmount?: number;
   message?: string | null;
   flagged?: boolean;
+  mediaUrl?: string;
+  mediaType?: "AUDIO" | "VIDEO";
+  /** Só toca a mídia quando o criador já aprovou na revisão manual de voz. */
+  mediaApproved?: boolean;
 }
 
 interface WidgetEvent {
@@ -101,7 +105,17 @@ export function WidgetClient({ token }: { token: string }) {
     let utterance: SpeechSynthesisUtterance | null = null;
     const p = next.payload;
     const amountOk = (p.grossAmount ?? p.amount ?? 0) >= (cfg?.ttsMinAmount ?? 0);
-    if (cfg?.ttsEnabled && p.message && !p.flagged && amountOk && "speechSynthesis" in window) {
+    // Se tem áudio do doador aprovado, ele fala por si — TTS do texto ficaria
+    // sobreposto e desnecessário.
+    const hasApprovedAudio = p.mediaType === "AUDIO" && p.mediaApproved;
+    if (
+      cfg?.ttsEnabled &&
+      p.message &&
+      !p.flagged &&
+      amountOk &&
+      !hasApprovedAudio &&
+      "speechSynthesis" in window
+    ) {
       utterance = new SpeechSynthesisUtterance(
         `${p.payerName ?? "Anônimo"} mandou: ${p.message}`
       );
@@ -213,11 +227,30 @@ export function WidgetClient({ token }: { token: string }) {
       )}
 
       {current && (
-        <div className="animate-fade-up w-full max-w-md overflow-hidden rounded-2xl border border-cyan-400/50 bg-[#0A0E27]/95 shadow-[0_0_40px_rgba(0,217,255,0.35)]">
+        <div className="animate-fade-up relative w-full max-w-md overflow-hidden rounded-2xl border border-cyan-400/50 bg-[#0A0E27]/95 shadow-[0_0_40px_rgba(0,217,255,0.35)]">
           {config?.gifUrl && (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={config.gifUrl} alt="" className="h-36 w-full object-cover" />
           )}
+          {/* Vídeo do doador aprovado — miniatura no canto do alerta. */}
+          {current.payload.mediaUrl &&
+            current.payload.mediaType === "VIDEO" &&
+            current.payload.mediaApproved && (
+              // eslint-disable-next-line jsx-a11y/media-has-caption
+              <video
+                autoPlay
+                playsInline
+                src={current.payload.mediaUrl}
+                className="absolute right-2 top-2 h-20 w-20 rounded-xl border border-white/20 object-cover"
+              />
+            )}
+          {/* Áudio do doador aprovado — toca junto com o alerta visual. */}
+          {current.payload.mediaUrl &&
+            current.payload.mediaType === "AUDIO" &&
+            current.payload.mediaApproved && (
+              // eslint-disable-next-line jsx-a11y/media-has-caption
+              <audio autoPlay src={current.payload.mediaUrl} className="hidden" />
+            )}
           <div className="p-5 text-center">
             <p className="font-display text-xl text-white">
               <span className="text-cyan-300">

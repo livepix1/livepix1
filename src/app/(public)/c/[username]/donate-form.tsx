@@ -5,9 +5,23 @@ import Image from "next/image";
 import { Button } from "@/components/ui/Button";
 import { Field, Input, Textarea } from "@/components/ui/Input";
 import { formatBRL } from "@/lib/serialize";
-import { createDonation, getDonationStatus } from "@/lib/actions/donations";
+import { createDonation, getDonationStatus, attachDonationMedia } from "@/lib/actions/donations";
 
 const PRESETS = [5, 10, 25, 50];
+const MAX_RECORDING_MS = 15000;
+
+/** Lê um Blob e devolve só a parte base64 (sem o prefixo `data:...;base64,`). */
+function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const result = reader.result as string;
+      resolve(result.split(",")[1] ?? "");
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
 
 interface DonateFormProps {
   username: string;
@@ -38,6 +52,76 @@ export function DonateForm({
   const [paid, setPaid] = useState(false);
   const [copied, setCopied] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Gravação de áudio (mensagem de voz do doador) — opcional, até 15s.
+  const [recordingState, setRecordingState] = useState<"idle" | "recording" | "recorded">(
+    "idle"
+  );
+  const [recordedUrl, setRecordedUrl] = useState<string | null>(null);
+  const [recordError, setRecordError] = useState<string | null>(null);
+  const recordedBlobRef = useRef<Blob | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const recordTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+
+  function stopStream() {
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+  }
+
+  async function startRecording() {
+    setRecordError(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      chunksRef.current = [];
+      const recorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = recorder;
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
+      };
+      recorder.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: "audio/webm" });
+        recordedBlobRef.current = blob;
+        setRecordedUrl(URL.createObjectURL(blob));
+        setRecordingState("recorded");
+        stopStream();
+        if (recordTimerRef.current) clearTimeout(recordTimerRef.current);
+      };
+      recorder.start();
+      setRecordingState("recording");
+      recordTimerRef.current = setTimeout(() => {
+        if (mediaRecorderRef.current?.state === "recording") {
+          mediaRecorderRef.current.stop();
+        }
+      }, MAX_RECORDING_MS);
+    } catch {
+      setRecordError("Não consegui acessar o microfone. Verifique a permissão do navegador.");
+    }
+  }
+
+  function stopRecording() {
+    if (mediaRecorderRef.current?.state === "recording") {
+      mediaRecorderRef.current.stop();
+    }
+  }
+
+  function discardRecording() {
+    if (recordedUrl) URL.revokeObjectURL(recordedUrl);
+    recordedBlobRef.current = null;
+    setRecordedUrl(null);
+    setRecordingState("idle");
+  }
+
+  useEffect(() => {
+    return () => {
+      if (recordTimerRef.current) clearTimeout(recordTimerRef.current);
+      stopStream();
+      if (recordedUrl) URL.revokeObjectURL(recordedUrl);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Polling do status após gerar o QR.
   useEffect(() => {
@@ -76,13 +160,26 @@ export function DonateForm({
 
     setLoading(true);
     const res = await createDonation(username, raw);
-    setLoading(false);
 
     if (!res.ok) {
+      setLoading(false);
       if (res.fieldErrors) setErrors(res.fieldErrors);
       setFormError(res.error);
       return;
     }
+
+    // Anexa a gravação de voz (se houver) — melhor esforço, nunca bloqueia o
+    // fluxo de pagamento se falhar (ex.: storage não configurado).
+    if (recordedBlobRef.current) {
+      try {
+        const base64 = await blobToBase64(recordedBlobRef.current);
+        await attachDonationMedia(res.donationId, base64, "AUDIO");
+      } catch {
+        /* silencioso — a doação já foi criada normalmente */
+      }
+    }
+
+    setLoading(false);
     setQr(res);
   }
 
@@ -195,6 +292,58 @@ export function DonateForm({
           onChange={(e) => setMessage(e.target.value.slice(0, maxMessageLen))}
           placeholder="Manda aquele salve..."
         />
+      </div>
+
+      <div>
+        <span className="mb-1.5 block text-sm font-medium text-pixflow-slate/80">
+          Gravar um áudio (até 15s, opcional)
+        </span>
+        {recordingState === "idle" && (
+          <button
+            type="button"
+            onClick={startRecording}
+            className="w-full rounded-xl border border-white/10 px-4 py-3 text-sm text-pixflow-slate/80 hover:border-pixflow-cyan/40"
+          >
+            🎙 Gravar mensagem de voz
+          </button>
+        )}
+        {recordingState === "recording" && (
+          <button
+            type="button"
+            onClick={stopRecording}
+            className="w-full animate-pulse rounded-xl border border-pixflow-magenta/50 bg-pixflow-magenta/10 px-4 py-3 text-sm text-pixflow-magenta"
+          >
+            ⏺ Gravando... toque para parar (máx. 15s)
+          </button>
+        )}
+        {recordingState === "recorded" && recordedUrl && (
+          <div className="rounded-xl border border-white/10 p-3">
+            {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+            <audio controls src={recordedUrl} className="w-full" />
+            <div className="mt-2 flex gap-2">
+              <button
+                type="button"
+                onClick={discardRecording}
+                className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-pixflow-slate/70 hover:border-pixflow-cyan/40"
+              >
+                Descartar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  discardRecording();
+                  startRecording();
+                }}
+                className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-pixflow-slate/70 hover:border-pixflow-cyan/40"
+              >
+                Regravar
+              </button>
+            </div>
+          </div>
+        )}
+        {recordError && (
+          <span className="mt-1 block text-xs text-pixflow-magenta">{recordError}</span>
+        )}
       </div>
 
       {!campaignId && goals.length > 0 && (
