@@ -7,6 +7,7 @@ import { donationSchema } from "@/lib/validators";
 import { toNumber } from "@/lib/serialize";
 import { getProvider, getCreatorSplit, ProviderNotConfiguredError } from "@/lib/payments";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { uploadDonationMedia } from "@/lib/media-upload";
 
 export type DonationResult =
   | {
@@ -137,4 +138,79 @@ export async function getDonationStatus(donationId: string): Promise<string | nu
     select: { status: true },
   });
   return d?.status ?? null;
+}
+
+export type AttachMediaResult = { ok: true } | { ok: false; error: string };
+
+// Base64 decodificado até ~2MB — dá pra um áudio de até 15s tranquilo; barra abuso.
+const MAX_MEDIA_BYTES = 2 * 1024 * 1024;
+
+/**
+ * Anexa uma gravação de áudio/vídeo do doador a uma doação já criada.
+ * Público (sem login) — chamado logo após `createDonation`, ainda na mesma
+ * submissão do formulário. Só aceita se a doação existir e ainda estiver
+ * PENDING, pra nunca sobrescrever/anexar mídia numa doação de outro criador
+ * ou já concluída por engano.
+ */
+export async function attachDonationMedia(
+  donationId: string,
+  base64Data: string,
+  mediaType: "AUDIO" | "VIDEO"
+): Promise<AttachMediaResult> {
+  const ip = headers().get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  const allowed = await checkRateLimit(`donation-media:${ip}`, 20, 10 * 60 * 1000);
+  if (!allowed) {
+    return { ok: false, error: "Muitas tentativas. Aguarde alguns minutos e tente de novo." };
+  }
+
+  if (mediaType !== "AUDIO" && mediaType !== "VIDEO") {
+    return { ok: false, error: "Tipo de mídia inválido" };
+  }
+  if (!base64Data || typeof base64Data !== "string") {
+    return { ok: false, error: "Mídia inválida" };
+  }
+
+  let buffer: Buffer;
+  try {
+    buffer = Buffer.from(base64Data, "base64");
+  } catch {
+    return { ok: false, error: "Mídia inválida" };
+  }
+  if (buffer.length === 0 || buffer.length > MAX_MEDIA_BYTES) {
+    return { ok: false, error: "Arquivo muito grande (máx. ~2MB)" };
+  }
+
+  const donation = await prisma.donation.findUnique({
+    where: { id: donationId },
+    select: { id: true, status: true },
+  });
+  // Só anexa em doação existente e ainda PENDING — evita anexar mídia em
+  // doação de outro criador (ou já paga/expirada) por engano.
+  if (!donation || donation.status !== "PENDING") {
+    return { ok: false, error: "Doação inválida para anexar mídia" };
+  }
+
+  const mimeType = mediaType === "AUDIO" ? "audio/webm" : "video/webm";
+  const arrayBuffer = buffer.buffer.slice(
+    buffer.byteOffset,
+    buffer.byteOffset + buffer.byteLength
+  ) as ArrayBuffer;
+  const blob = new Blob([arrayBuffer], { type: mimeType });
+  const mediaUrl = await uploadDonationMedia(blob, donation.id);
+  if (!mediaUrl) {
+    // Storage não configurado (ou upload falhou) — best-effort, não quebra a doação.
+    return { ok: false, error: "Upload de mídia indisponível no momento" };
+  }
+
+  // updateMany com o filtro de status como guarda extra contra corrida
+  // (a doação pode ter sido paga entre o findUnique acima e aqui).
+  const result = await prisma.donation.updateMany({
+    where: { id: donation.id, status: "PENDING" },
+    data: { mediaUrl, mediaType },
+  });
+  if (result.count === 0) {
+    return { ok: false, error: "Doação inválida para anexar mídia" };
+  }
+
+  return { ok: true };
 }

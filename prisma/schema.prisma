@@ -173,7 +173,9 @@ model Donation {
   provider         String    @default("ASAAS")
   providerId       String?   @unique // id da cobrança no provider (idempotência)
   receiptUrl       String? // comprovante — diferencial anti-"PIX sumiu"
-  moderationStatus String    @default("AUTO_OK") // AUTO_OK, FLAGGED, BLOCKED
+  moderationStatus String    @default("AUTO_OK") // AUTO_OK, FLAGGED, BLOCKED, PENDING_VOICE_REVIEW
+  mediaUrl         String?
+  mediaType        String? // AUDIO, VIDEO
   goalId           String?
   campaignId       String?
   createdAt        DateTime  @default(now())
