@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Field, Input, Textarea } from "@/components/ui/Input";
 import { formatBRL } from "@/lib/serialize";
 import { createDonation, getDonationStatus, attachDonationMedia } from "@/lib/actions/donations";
+import { submitMediaRequest } from "@/lib/actions/media-requests";
 
 const PRESETS = [5, 10, 25, 50];
 const MAX_RECORDING_MS = 15000;
@@ -32,6 +33,8 @@ interface DonateFormProps {
   goals: { id: string; title: string }[];
   /** Fixa a doação numa campanha específica (página /campanhas/[slug]) — some com o seletor de meta. */
   campaignId?: string;
+  /** Habilita o campo de "link de vídeo/música" — some por padrão (widgets P1). */
+  allowMediaRequest?: "VIDEO" | "MUSIC" | null;
 }
 
 type QrState = { donationId: string; qrImage: string; pixCode: string };
@@ -43,9 +46,11 @@ export function DonateForm({
   maxMessageLen,
   goals,
   campaignId,
+  allowMediaRequest = null,
 }: DonateFormProps) {
   const [amount, setAmount] = useState<string>("10");
   const [message, setMessage] = useState("");
+  const [mediaUrl, setMediaUrl] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -175,6 +180,16 @@ export function DonateForm({
       try {
         const base64 = await blobToBase64(recordedBlobRef.current);
         await attachDonationMedia(res.donationId, base64, "AUDIO");
+      } catch {
+        /* silencioso — a doação já foi criada normalmente */
+      }
+    }
+
+    // Anexa o pedido de vídeo/música (se o widget estiver habilitado e o
+    // doador preencheu o link) — melhor esforço, nunca bloqueia o pagamento.
+    if (allowMediaRequest && mediaUrl.trim()) {
+      try {
+        await submitMediaRequest(res.donationId, allowMediaRequest, mediaUrl.trim(), raw.payerName);
       } catch {
         /* silencioso — a doação já foi criada normalmente */
       }
@@ -348,6 +363,21 @@ export function DonateForm({
           <span className="mt-1 block text-xs text-pixflow-magenta">{recordError}</span>
         )}
       </div>
+
+      {allowMediaRequest && (
+        <Field label={`Link ${allowMediaRequest === "VIDEO" ? "do vídeo (YouTube)" : "da música"} (opcional)`}>
+          <Input
+            value={mediaUrl}
+            onChange={(e) => setMediaUrl(e.target.value)}
+            type="url"
+            placeholder={
+              allowMediaRequest === "VIDEO"
+                ? "https://www.youtube.com/watch?v=..."
+                : "https://..."
+            }
+          />
+        </Field>
+      )}
 
       {!campaignId && goals.length > 0 && (
         <Field label="Contribuir para uma meta (opcional)">
