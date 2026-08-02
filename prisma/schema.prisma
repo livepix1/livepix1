@@ -55,6 +55,8 @@ model User {
   polls            Poll[]
   alertVariations  AlertVariation[]
   alertTemplates   AlertTemplate[]
+  marathonConfig   MarathonConfig?
+  mediaRequests    MediaRequest[]
 }
 
 model Account {
@@ -283,6 +285,41 @@ model AlertTemplate {
   @@index([creatorId])
 }
 
+// Widget de Maratona (P1) — cronômetro que soma segundos por valor doado.
+// `remainingSeconds` é decrementado no cliente (widget) e incrementado no
+// servidor a cada doação paga; sem timer de servidor, é só um contador vivo.
+model MarathonConfig {
+  id               String   @id @default(cuid())
+  creatorId        String   @unique
+  isActive         Boolean  @default(false)
+  secondsPerReal   Int      @default(60) // segundos somados por R$1 doado
+  maxSeconds       Int?     // teto opcional (null = sem limite)
+  remainingSeconds Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  creator User @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+}
+
+// Fila de pedidos de vídeo (YouTube) ou música — widgets P1 (VÍDEO/MÚSICA).
+model MediaRequest {
+  id            String    @id @default(cuid())
+  creatorId     String
+  kind          String // VIDEO, MUSIC
+  url           String
+  title         String?
+  thumbnailUrl  String?
+  requesterName String    @default("Anônimo")
+  status        String    @default("PENDING") // PENDING, PLAYING, DONE, SKIPPED
+  donationId    String?
+  createdAt     DateTime  @default(now())
+  playedAt      DateTime?
+
+  creator User @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+
+  @@index([creatorId, kind, status])
+}
+
 model Goal {
   id            String    @id @default(cuid())
   creatorId     String
@@ -326,6 +363,9 @@ model Poll {
   isActive  Boolean   @default(true)
   endsAt    DateTime?
   createdAt DateTime  @default(now())
+  // P1 — overlay ao vivo: SINGLE (um voto por opção, atual) ou WEIGHTED
+  // (voto vale pelo valor doado — precisa de doação vinculada, ver PROJETO.md).
+  voteMode  String    @default("SINGLE")
 
   creator User         @relation(fields: [creatorId], references: [id], onDelete: Cascade)
   options PollOption[]
