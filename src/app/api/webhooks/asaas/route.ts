@@ -7,6 +7,7 @@ import { broadcastToWidget } from "@/lib/realtime";
 import { dispatchWebhook } from "@/lib/webhooks";
 import { BANNED_WORDS } from "@/lib/moderation-words";
 import { createAndBroadcastDonationAlert } from "@/lib/donation-alerts";
+import { addMarathonSeconds } from "@/lib/actions/marathon";
 
 /** Processa doação paga: status + ledger (bruto - taxa) + meta + alerta + broadcast. */
 async function handleDonationPaid(donationId: string, providerId?: string | null) {
@@ -70,6 +71,11 @@ async function handleDonationPaid(donationId: string, providerId?: string | null
       })
       .catch(() => {});
   }
+
+  // Maratona (widget P1): soma segundos ao cronômetro. Best-effort — a própria
+  // função já ignora criador sem maratona ativa, e um erro aqui não pode
+  // derrubar o processamento do pagamento.
+  await addMarathonSeconds(donation.creatorId, amount).catch(() => {});
 
   // Fila de alerta (fonte de verdade) + broadcast (empurrão, best-effort).
   // Doações abaixo do mínimo configurado pelo criador não geram alerta na tela

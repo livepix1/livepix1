@@ -59,7 +59,7 @@ export const RESERVED_USERNAMES = new Set([
   "assinaturas", "assinatura", "moderacao", "configuracoes", "verificacao", "analytics",
   "seguranca", "c", "campanhas", "app", "www", "suporte", "ajuda", "termos", "privacidade",
   "sobre", "precos", "taxas", "blog", "docs", "static", "_next", "favicon.ico",
-  "confirmar-saque", "enquetes",
+  "confirmar-saque", "enquetes", "widgets",
 ]);
 
 export const profileSchema = z.object({

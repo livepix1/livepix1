@@ -193,5 +193,36 @@ assinatura é cobrada, nenhum saque sai de verdade. Isso não é resolvido
 escrevendo código; é uma credencial que só o dono consegue (conta Asaas,
 sandbox é grátis). Aguardando o dono passar a chave.
 
-### Próximo: P1 (widgets faltantes: Maratona, Ranking, Vídeo, Música,
-Últimos Incentivos, Enquete ao vivo) — ainda não iniciado.
+### ✅ P1 CONCLUÍDO (2026-08-02)
+Os 6 widgets do roadmap, construídos por 4 subagentes em paralelo + integração
+final feita centralmente. Índice em **`/widgets`** (novo item na Sidebar) lista
+todos com a URL pronta pro OBS.
+
+| Widget | Overlay | Painel |
+|---|---|---|
+| Maratona | `/widget/{token}/maratona` | `/widgets/maratona` |
+| Ranking | `/widget/{token}/ranking?period=today\|week\|month\|all` | `/widgets/ranking-e-recentes` |
+| Últimos incentivos | `/widget/{token}/ultimos` | `/widgets/ranking-e-recentes` |
+| Vídeo | `/widget/{token}/video` | `/widgets/video` |
+| Música | `/widget/{token}/musica` | `/widgets/musica` |
+| Enquete ao vivo | `/widget/{token}/enquete` | `/widgets/enquete` |
+
+**Testado de verdade contra o banco/servidor real** (não só build):
+- Maratona: 3 cenários — inativa não soma (0s), ativa soma certo
+  (R$10 × 60 = 600s), teto respeitado (trava em 700s). **Conectada ao webhook
+  de pagamento** em `handleDonationPaid` (best-effort, não derruba o pagamento).
+- As 6 rotas de API dos widgets responderam HTTP 200 com payload correto.
+- Fila de mídia: criei 2 pedidos reais, `skip` avançou o próximo pra PLAYING,
+  `clear` esvaziou. Controle remoto (StreamDeck) funcionando.
+- Dados de teste limpos do banco depois.
+
+**Limitações conhecidas (registradas, não escondidas):**
+- `pause`/`resume` da fila de mídia são no-ops (não há estado de pausa
+  persistido) — `skip`/`clear` funcionam de verdade.
+- O campo "link de vídeo/música" existe no formulário de doação
+  (`allowMediaRequest`) mas **está dormente**: nenhuma página passa essa prop
+  ainda. Falta decidir se é config por criador (provavelmente sim) e ligar.
+- Enquete ao vivo lê `voteMode` do banco, mas a lógica `WEIGHTED` (voto valendo
+  pelo valor doado) **não foi construída** — só o campo existe.
+
+### Próximo: P2 (moderação com IA) — ainda não iniciado.

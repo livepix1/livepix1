@@ -30,9 +30,9 @@ export async function GET(
     poll: {
       id: poll.id,
       question: poll.question,
-      // TODO(voteMode): o schema ainda não tem a coluna `voteMode` (SINGLE/WEIGHTED)
-      // apesar de documentado no roadmap — fixo em "SINGLE" até a migration existir.
-      voteMode: "SINGLE" as const,
+      // SINGLE hoje; WEIGHTED (voto por valor doado) tem a coluna pronta no
+      // schema mas a lógica de peso ainda não foi construída — ver PROJETO.md.
+      voteMode: poll.voteMode,
       options: poll.options.map((o) => ({
         id: o.id,
         label: o.label,

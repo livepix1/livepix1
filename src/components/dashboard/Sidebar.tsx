@@ -19,6 +19,7 @@ import {
   Webhook,
   KeyRound,
   ShieldAlert,
+  MonitorPlay,
   type LucideIcon,
 } from "lucide-react";
 import { Logo } from "@/components/Logo";
@@ -49,9 +50,10 @@ const GROUPS: NavGroup[] = [
     title: "Monetização",
     items: [
       { label: "Alertas", href: "/alertas", icon: Bell },
+      { label: "Widgets", href: "/widgets", icon: MonitorPlay, badge: "Novo" },
       { label: "Metas", href: "/metas", icon: Target },
       { label: "Campanhas", href: "/campanhas", icon: Megaphone },
-      { label: "Enquetes", href: "/enquetes", icon: BarChart3, badge: "Novo" },
+      { label: "Enquetes", href: "/enquetes", icon: BarChart3 },
       { label: "Assinaturas", href: "/assinaturas", icon: Repeat },
       { label: "Moderação", href: "/moderacao", icon: ShieldAlert },
     ],
