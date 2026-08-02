@@ -120,7 +120,28 @@ Card com hover sutil.
 
 ---
 
-## 5. PRESENTE — o que está ACONTECENDO AGORA (P1, em execução)
+## 5. PRESENTE — P1 CONCLUÍDO ✅ (commit `4e53e1d`, no ar)
+
+> **A seção abaixo (5-antiga) descrevia o P1 em execução e está OBSOLETA.**
+> Os 4 agentes terminaram, foram mesclados sem duplicação de schema (a
+> precaução de commitar o schema antes funcionou), e o P1 foi testado contra
+> banco/servidor real e publicado. Ver `PROJETO.md` seção "P1 CONCLUÍDO" pra
+> a lista completa de rotas e limitações conhecidas.
+>
+> **Próximo passo real: P2 (moderação com IA).**
+>
+> Duas coisas que aconteceram e valem lembrar:
+> 1. O agente da Maratona **travou antes de commitar** — os arquivos ficaram
+>    soltos no worktree e foram recuperados manualmente. Se um agente parar
+>    sem relatório, **verifique `git status` no worktree dele** antes de
+>    assumir que o trabalho se perdeu.
+> 2. O agente da Enquete **detectou sozinho** que o schema do worktree dele
+>    não tinha `voteMode` e, em vez de inventar a coluna, deixou um valor fixo
+>    com TODO e avisou. Corrigido no merge. Esse é o comportamento certo.
+
+---
+
+## 5-antiga (HISTÓRICO) — o que estava acontecendo durante o P1
 
 **Schema do P1 já migrado no banco real e commitado (`f1dfcbd`):**
 `MarathonConfig`, `MediaRequest` (kind VIDEO/MUSIC), `Poll.voteMode`.
