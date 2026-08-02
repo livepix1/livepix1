@@ -22,6 +22,8 @@ export default async function ConfiguracoesPaginaPage() {
         minDonation: String(toNumber(profile.minDonation)),
         maxMessageLen: String(profile.maxMessageLen),
         isPublic: profile.isPublic,
+        allowVideoRequests: profile.allowVideoRequests,
+        allowMusicRequests: profile.allowMusicRequests,
       }
     : null;
 

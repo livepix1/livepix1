@@ -57,6 +57,11 @@ export default async function CreatorPage({
     hasTelegramReward: Boolean(p.telegramGroupId),
   }));
 
+  const mediaRequestKinds: ("VIDEO" | "MUSIC")[] = [
+    ...(profile.allowVideoRequests ? (["VIDEO"] as const) : []),
+    ...(profile.allowMusicRequests ? (["MUSIC"] as const) : []),
+  ];
+
   const publicPolls: PublicPoll[] = polls.map((p) => ({
     id: p.id,
     question: p.question,
@@ -180,6 +185,7 @@ export default async function CreatorPage({
                 minDonation={toNumber(profile.minDonation)}
                 maxMessageLen={profile.maxMessageLen}
                 goals={goals.map((g) => ({ id: g.id, title: g.title }))}
+                mediaRequestKinds={mediaRequestKinds}
               />
             </Card>
           </div>

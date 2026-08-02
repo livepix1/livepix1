@@ -168,6 +168,12 @@ model CreatorProfile {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
+  // Pedidos de mídia junto com a doação (widgets P1 de Vídeo/Música).
+  // Desligados por padrão: só aparecem no formulário público quando o criador
+  // ativa e realmente usa o overlay correspondente no OBS.
+  allowVideoRequests Boolean @default(false)
+  allowMusicRequests Boolean @default(false)
+
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 

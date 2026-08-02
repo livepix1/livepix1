@@ -102,6 +102,10 @@ export default async function CampaignPage({
                   maxMessageLen={profile.maxMessageLen}
                   goals={[]}
                   campaignId={campaign.id}
+                  mediaRequestKinds={[
+                    ...(profile.allowVideoRequests ? (["VIDEO"] as const) : []),
+                    ...(profile.allowMusicRequests ? (["MUSIC"] as const) : []),
+                  ]}
                 />
               ) : (
                 <p className="py-6 text-center text-sm text-white/40">

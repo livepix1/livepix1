@@ -34,7 +34,8 @@ interface DonateFormProps {
   /** Fixa a doação numa campanha específica (página /campanhas/[slug]) — some com o seletor de meta. */
   campaignId?: string;
   /** Habilita o campo de "link de vídeo/música" — some por padrão (widgets P1). */
-  allowMediaRequest?: "VIDEO" | "MUSIC" | null;
+  /** Tipos de pedido de mídia liberados pelo criador (widgets P1). Vazio = campo não aparece. */
+  mediaRequestKinds?: ("VIDEO" | "MUSIC")[];
 }
 
 type QrState = { donationId: string; qrImage: string; pixCode: string };
@@ -46,11 +47,15 @@ export function DonateForm({
   maxMessageLen,
   goals,
   campaignId,
-  allowMediaRequest = null,
+  mediaRequestKinds = [],
 }: DonateFormProps) {
   const [amount, setAmount] = useState<string>("10");
   const [message, setMessage] = useState("");
   const [mediaUrl, setMediaUrl] = useState("");
+  // Quando o criador libera os dois tipos, o doador escolhe; com um só, é fixo.
+  const [mediaKind, setMediaKind] = useState<"VIDEO" | "MUSIC">(
+    mediaRequestKinds[0] ?? "VIDEO"
+  );
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -187,9 +192,9 @@ export function DonateForm({
 
     // Anexa o pedido de vídeo/música (se o widget estiver habilitado e o
     // doador preencheu o link) — melhor esforço, nunca bloqueia o pagamento.
-    if (allowMediaRequest && mediaUrl.trim()) {
+    if (mediaRequestKinds.length > 0 && mediaUrl.trim()) {
       try {
-        await submitMediaRequest(res.donationId, allowMediaRequest, mediaUrl.trim(), raw.payerName);
+        await submitMediaRequest(res.donationId, mediaKind, mediaUrl.trim(), raw.payerName);
       } catch {
         /* silencioso — a doação já foi criada normalmente */
       }
@@ -364,19 +369,35 @@ export function DonateForm({
         )}
       </div>
 
-      {allowMediaRequest && (
-        <Field label={`Link ${allowMediaRequest === "VIDEO" ? "do vídeo (YouTube)" : "da música"} (opcional)`}>
-          <Input
-            value={mediaUrl}
-            onChange={(e) => setMediaUrl(e.target.value)}
-            type="url"
-            placeholder={
-              allowMediaRequest === "VIDEO"
-                ? "https://www.youtube.com/watch?v=..."
-                : "https://..."
-            }
-          />
-        </Field>
+      {mediaRequestKinds.length > 0 && (
+        <div className="grid gap-2">
+          {mediaRequestKinds.length > 1 && (
+            <Field label="Tipo de pedido (opcional)">
+              <select
+                value={mediaKind}
+                onChange={(e) => setMediaKind(e.target.value as "VIDEO" | "MUSIC")}
+                className="w-full rounded-xl border border-white/10 bg-pixflow-darker/60 px-4 py-3 text-pixflow-slate focus:border-pixflow-cyan focus:outline-none"
+              >
+                <option value="VIDEO">Vídeo (YouTube)</option>
+                <option value="MUSIC">Música</option>
+              </select>
+            </Field>
+          )}
+          <Field
+            label={`Link ${mediaKind === "VIDEO" ? "do vídeo (YouTube)" : "da música"} (opcional)`}
+          >
+            <Input
+              value={mediaUrl}
+              onChange={(e) => setMediaUrl(e.target.value)}
+              type="url"
+              placeholder={
+                mediaKind === "VIDEO"
+                  ? "https://www.youtube.com/watch?v=..."
+                  : "https://..."
+              }
+            />
+          </Field>
+        </div>
       )}
 
       {!campaignId && goals.length > 0 && (

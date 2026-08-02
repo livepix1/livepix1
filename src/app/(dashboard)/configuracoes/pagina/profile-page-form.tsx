@@ -14,6 +14,8 @@ interface Props {
     minDonation: string;
     maxMessageLen: string;
     isPublic: boolean;
+    allowVideoRequests: boolean;
+    allowMusicRequests: boolean;
   } | null;
   publicUrl: string | null;
   usernameMissing: boolean;
@@ -39,6 +41,8 @@ export function ProfilePageForm({ initial, publicUrl, usernameMissing }: Props) 
       minDonation: String(form.get("minDonation") || "1"),
       maxMessageLen: String(form.get("maxMessageLen") || "200"),
       isPublic: String(form.get("isPublic")) === "true",
+      allowVideoRequests: form.get("allowVideoRequests") === "on",
+      allowMusicRequests: form.get("allowMusicRequests") === "on",
     };
 
     setLoading(true);
@@ -100,6 +104,34 @@ export function ProfilePageForm({ initial, publicUrl, usernameMissing }: Props) 
           <option value="false">Oculta (só você vê)</option>
         </Select>
       </Field>
+
+      <div className="rounded-xl border border-white/10 bg-pixflow-dark px-4 py-3">
+        <p className="text-sm font-medium text-pixflow-slate/80">
+          Pedidos junto com a doação
+        </p>
+        <p className="mt-0.5 text-xs text-white/40">
+          Libera um campo de link no seu formulário. Os pedidos entram na fila dos
+          widgets de Vídeo/Música — ative só o que você realmente usa no OBS.
+        </p>
+        <div className="mt-3 grid gap-2">
+          <label className="flex items-center gap-2 text-sm text-white/70">
+            <input
+              type="checkbox"
+              name="allowVideoRequests"
+              defaultChecked={initial?.allowVideoRequests ?? false}
+            />
+            Aceitar pedidos de vídeo (YouTube)
+          </label>
+          <label className="flex items-center gap-2 text-sm text-white/70">
+            <input
+              type="checkbox"
+              name="allowMusicRequests"
+              defaultChecked={initial?.allowMusicRequests ?? false}
+            />
+            Aceitar pedidos de música
+          </label>
+        </div>
+      </div>
 
       {publicUrl && !message && (
         <div>

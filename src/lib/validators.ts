@@ -91,6 +91,8 @@ export const creatorProfileSchema = z.object({
   minDonation: z.coerce.number().min(1, "Mínimo de R$ 1,00").max(1000),
   maxMessageLen: z.coerce.number().int().min(50).max(400),
   isPublic: z.coerce.boolean(),
+  allowVideoRequests: z.coerce.boolean().default(false),
+  allowMusicRequests: z.coerce.boolean().default(false),
 });
 export type CreatorProfileInput = z.infer<typeof creatorProfileSchema>;
 

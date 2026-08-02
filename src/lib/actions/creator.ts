@@ -37,6 +37,8 @@ export async function saveCreatorProfile(input: unknown): Promise<ActionResult> 
     minDonation: new Prisma.Decimal(parsed.data.minDonation),
     maxMessageLen: parsed.data.maxMessageLen,
     isPublic: parsed.data.isPublic,
+    allowVideoRequests: parsed.data.allowVideoRequests,
+    allowMusicRequests: parsed.data.allowMusicRequests,
   };
 
   await prisma.creatorProfile.upsert({

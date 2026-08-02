@@ -219,9 +219,12 @@ todos com a URL pronta pro OBS.
 **Limitações conhecidas (registradas, não escondidas):**
 - `pause`/`resume` da fila de mídia são no-ops (não há estado de pausa
   persistido) — `skip`/`clear` funcionam de verdade.
-- O campo "link de vídeo/música" existe no formulário de doação
-  (`allowMediaRequest`) mas **está dormente**: nenhuma página passa essa prop
-  ainda. Falta decidir se é config por criador (provavelmente sim) e ligar.
+- ~~O campo "link de vídeo/música" está dormente~~ → **RESOLVIDO (2026-08-02)**:
+  virou config por criador (`CreatorProfile.allowVideoRequests` /
+  `allowMusicRequests`), com dois checkboxes em `/configuracoes/pagina`. O
+  campo aparece no formulário público só quando ligado; com os dois ligados,
+  o doador escolhe o tipo num seletor. **Testado nos dois estados** (ligado
+  mostra com seletor, desligado some da página).
 - Enquete ao vivo lê `voteMode` do banco, mas a lógica `WEIGHTED` (voto valendo
   pelo valor doado) **não foi construída** — só o campo existe.
 
