@@ -52,6 +52,7 @@ model User {
   apiKeys          ApiKey[]
   webhookEndpoints WebhookEndpoint[]
   socialConnections SocialConnection[]
+  polls            Poll[]
 }
 
 model Account {
@@ -132,10 +133,14 @@ model Withdrawal {
   destinationBank    String?
   destinationAgency  String?
   destinationAccount String?
-  status             String    @default("PENDING") // PENDING, PROCESSING, COMPLETED, FAILED
+  status             String    @default("PENDING") // AWAITING_CONFIRMATION, PENDING, PROCESSING, COMPLETED, FAILED
   asaasTransferId    String?
   createdAt          DateTime  @default(now())
   completedAt        DateTime?
+
+  // Confirmação de saque por e-mail (F7)
+  confirmToken String?   @unique
+  confirmedAt  DateTime?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -178,6 +183,10 @@ model Donation {
   campaignId       String?
   createdAt        DateTime  @default(now())
   paidAt           DateTime?
+
+  // Mensagem de áudio/vídeo do doador (F10b) — moderação reusa moderationStatus.
+  mediaUrl  String?
+  mediaType String? // AUDIO, VIDEO
 
   creator  User      @relation(fields: [creatorId], references: [id], onDelete: Cascade)
   goal     Goal?     @relation(fields: [goalId], references: [id], onDelete: SetNull)
@@ -253,6 +262,32 @@ model Campaign {
   donations Donation[]
 
   @@unique([creatorId, slug])
+}
+
+// Enquetes (F10b) — baixa prioridade, mas confirmada na paridade com a LivePix.
+model Poll {
+  id        String    @id @default(cuid())
+  creatorId String
+  question  String
+  isActive  Boolean   @default(true)
+  endsAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  creator User         @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  options PollOption[]
+
+  @@index([creatorId, isActive])
+}
+
+model PollOption {
+  id        String @id @default(cuid())
+  pollId    String
+  label     String
+  voteCount Int    @default(0)
+
+  poll Poll @relation(fields: [pollId], references: [id], onDelete: Cascade)
+
+  @@index([pollId])
 }
 
 // Plano de assinatura criado pelo criador (membership).
